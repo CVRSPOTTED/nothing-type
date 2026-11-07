@@ -1,0 +1,1 @@
+Long-press symbols, cursor movement on Space, editor-aware capitalization and numeric keys, and an English interface.

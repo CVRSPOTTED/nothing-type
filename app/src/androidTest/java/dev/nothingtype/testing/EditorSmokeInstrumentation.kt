@@ -1,0 +1,274 @@
+package dev.nothingtype.testing
+
+import android.app.Activity
+import android.app.Instrumentation
+import android.content.Intent
+import android.graphics.Rect
+import android.os.Bundle
+import android.os.ParcelFileDescriptor
+import android.os.SystemClock
+import android.text.InputType
+import android.view.InputDevice
+import android.view.MotionEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.view.accessibility.AccessibilityWindowInfo
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import dev.nothingtype.R
+
+/** Runs the actual installed IME against native text, password and decimal editors. */
+class EditorSmokeInstrumentation : Instrumentation() {
+    override fun onCreate(arguments: Bundle?) {
+        super.onCreate(arguments)
+        start()
+    }
+
+    override fun onStart() {
+        val result = Bundle()
+        var code = Activity.RESULT_CANCELED
+        val packageName = targetContext.packageName
+        val ime = "$packageName/.KeyloomIme"
+        var oldIme: String? = null
+        var oldHardwareIme: String? = null
+        var wasEnabled = true
+        var activity: EditorFixtureActivity? = null
+        var externalStarted = false
+        try {
+            uiAutomation.serviceInfo = uiAutomation.serviceInfo.apply {
+                flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            }
+            oldIme = shell("settings get secure default_input_method").trim()
+            wasEnabled = shell("ime list -s").lineSequence().any { it.trim() == ime }
+            oldHardwareIme = shell("settings get secure show_ime_with_hard_keyboard").trim()
+            shell("settings put secure show_ime_with_hard_keyboard 1")
+            shell("ime enable $ime")
+            shell("ime set $ime")
+            check(shell("settings get secure default_input_method").trim() == ime)
+            val editorActivity = startActivitySync(Intent(targetContext, EditorFixtureActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as EditorFixtureActivity
+            activity = editorActivity
+            val manager = editorActivity.getSystemService(InputMethodManager::class.java)
+            fun focus(editor: EditText) = runOnMainSync {
+                editor.requestFocus()
+                manager.showSoftInput(editor, InputMethodManager.SHOW_IMPLICIT)
+            }
+            focus(editorActivity.editor)
+            await("capital letter in sentence field") { key("Q", "Й")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true }
+            await("editor receives text") { read(editorActivity.editor).let { it == "Q" || it == "Й" } }
+            val initial = read(editorActivity.editor)
+            val english = initial == "Q"
+            val letter = if (english) "e" else "е"
+            val space = targetContext.getString(if (english) R.string.space_en_help else R.string.space_ru_help)
+            val next = initial.lowercase()
+            await("keys for rapid typing") { key(letter) != null && key(next) != null && key(space) != null }
+            tapSequence(letter, letter, space, next, ".", space, next)
+            val expected = "$initial$letter$letter $next. $initial"
+            await("rapid typing preserves order, repeated letters and sentence capitalization") {
+                read(editorActivity.editor) == expected
+            }
+            tapWithOverlap(letter, next)
+            tapWithOverlap(next, next, secondLiftsFirst = true)
+            tapWithOverlap(space, next)
+            val overlapping = expected + letter + next.repeat(3) + " " + next
+            await("overlapping taps preserve every character in touch order") {
+                read(editorActivity.editor) == overlapping
+            }
+            runOnMainSync {
+                editorActivity.editor.setText("")
+                editorActivity.editor.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_CORRECT
+                manager.restartInput(editorActivity.editor)
+            }
+            val typo = if (english) "helllo" else "превет"
+            val corrected = if (english) "hello " else "привет "
+            await("lowercase keys for T9") { key(typo.first().toString()) != null }
+            tapSequence(*(typo.map(Char::toString) + space).toTypedArray())
+            await("T9 corrects the word on space") { read(editorActivity.editor) == corrected }
+            check(checkNotNull(key(targetContext.getString(R.string.delete_character)))
+                .performAction(AccessibilityNodeInfo.ACTION_CLICK))
+            await("Backspace undoes the T9 correction") { read(editorActivity.editor) == typo }
+            tapSequence(space)
+            await("space keeps the explicitly restored word") { read(editorActivity.editor) == "$typo " }
+            val accurate = if (english) "hello" else "привет"
+            // Deliberately land in the visual spacing, then slide slightly before lifting.
+            tapSequenceAtEdges(*(accurate.map(Char::toString) + space).toTypedArray())
+            await("key spacing accepts taps without missing or reordering characters") {
+                read(editorActivity.editor) == "$typo $accurate "
+            }
+            focus(editorActivity.privateEditor)
+            await("password layout") {
+                key("q", "й") != null && key("Voice input", "Голосовой ввод", prefix = true) == null
+            }
+            focus(editorActivity.numberEditor)
+            await("decimal layout without a minus key") { key(".") != null && key("-") == null && key("q", "й") == null }
+            await("decimal key inserts text") { key("1")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true }
+            await("number editor receives text") { read(editorActivity.numberEditor) == "1" }
+            runOnMainSync { manager.hideSoftInputFromWindow(editorActivity.numberEditor.windowToken, 0) }
+            await("IME is hidden") { imeRoot() == null }
+            focus(editorActivity.editor)
+            await("IME restarts in a text editor") { key("q", "Q", "й", "Й") != null }
+            val external = "${context.packageName}/${ExternalEditorActivity::class.java.name}"
+            check("Error" !in shell("am start -W -n $external"))
+            externalStarted = true
+            await("web editor in the test app") {
+                webEditor()?.let { node ->
+                    val bounds = android.graphics.Rect()
+                    node.getBoundsInScreen(bounds)
+                    if (bounds.isEmpty) false else {
+                        shell("input tap ${bounds.centerX()} ${bounds.centerY()}")
+                        true
+                    }
+                } ?: false
+            }
+            await("IME types in the web editor") {
+                key("q", "й")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
+            }
+            await("web editor receives text") { webEditor()?.text?.toString() in listOf("q", "й") }
+            await("settings button opens the app") {
+                key("Settings", "Настройки")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
+            }
+            await("Nothing Type settings activity is visible") {
+                val label = targetContext.getString(R.string.tab_style)
+                uiAutomation.windows.asSequence().mapNotNull { it.root }.any { root ->
+                    root.packageName?.toString() == packageName && find(root) { it.text?.toString() == label } != null
+                }
+            }
+            result.putString("stream", "PASS: key gaps and finger drift, T9 and undo, overlapping and rapid taps, capitalization, native and web editors, hide and restart, settings opens app")
+            code = Activity.RESULT_OK
+        } catch (failure: Exception) {
+            val windows = uiAutomation.windows.joinToString { "${it.type}:${it.root?.packageName}" }
+            val labels = mutableListOf<String>()
+            imeRoot()?.let { root ->
+                find(root) { node ->
+                    if (node.isClickable) labels.add((node.contentDescription ?: node.text).toString())
+                    false
+                }
+            }
+            result.putString("stream", "${failure.stackTraceToString()}\nWindows: $windows\nIME keys: $labels")
+        } finally {
+            if (externalStarted && webEditor() != null) {
+                shell("input keyevent BACK")
+                if (webEditor() != null) shell("input keyevent BACK")
+            }
+            activity?.let { runOnMainSync { it.finish() } }
+            if (!oldIme.isNullOrBlank() && oldIme != "null" && oldIme != ime) shell("ime set $oldIme")
+            if (!wasEnabled) shell("ime disable $ime")
+            oldHardwareIme?.let {
+                if (it == "null") shell("settings delete secure show_ime_with_hard_keyboard")
+                else shell("settings put secure show_ime_with_hard_keyboard $it")
+            }
+            finish(code, result)
+        }
+    }
+
+    private fun read(editor: EditText): String {
+        var value = ""
+        runOnMainSync { value = editor.text.toString() }
+        return value
+    }
+
+    private fun tapSequence(vararg labels: String) {
+        val positions = labels.map { label ->
+            Rect().also { checkNotNull(key(label)).getBoundsInScreen(it) }
+        }
+        positions.forEach { bounds ->
+            val downTime = SystemClock.uptimeMillis()
+            for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
+                    bounds.exactCenterX(), bounds.exactCenterY(), 0)
+                try {
+                    event.source = InputDevice.SOURCE_TOUCHSCREEN
+                    check(uiAutomation.injectInputEvent(event, false))
+                } finally {
+                    event.recycle()
+                }
+            }
+        }
+    }
+
+    private fun tapWithOverlap(first: String, second: String, secondLiftsFirst: Boolean = false) {
+        val bounds = listOf(first, second).map { label ->
+            Rect().also { checkNotNull(key(label)).getBoundsInScreen(it) }
+        }
+        val downTime = SystemClock.uptimeMillis()
+        fun send(action: Int, vararg ids: Int) {
+            val properties = ids.map { id ->
+                MotionEvent.PointerProperties().apply { this.id = id; toolType = MotionEvent.TOOL_TYPE_FINGER }
+            }.toTypedArray()
+            val coords = ids.map { id ->
+                MotionEvent.PointerCoords().apply {
+                    x = bounds[id].exactCenterX(); y = bounds[id].exactCenterY()
+                    pressure = 1f; size = 1f
+                }
+            }.toTypedArray()
+            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, ids.size,
+                properties, coords, 0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
+            try { check(uiAutomation.injectInputEvent(event, false)) } finally { event.recycle() }
+        }
+        send(MotionEvent.ACTION_DOWN, 0)
+        send(MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), 0, 1)
+        val firstUp = if (secondLiftsFirst) 1 else 0
+        send(MotionEvent.ACTION_POINTER_UP or (firstUp shl MotionEvent.ACTION_POINTER_INDEX_SHIFT), 0, 1)
+        send(MotionEvent.ACTION_UP, 1 - firstUp)
+    }
+
+    private fun tapSequenceAtEdges(vararg labels: String) {
+        val positions = labels.map { label ->
+            Rect().also { checkNotNull(key(label)).getBoundsInScreen(it) }
+        }
+        positions.forEach { bounds ->
+            val downTime = SystemClock.uptimeMillis()
+            val x = bounds.exactCenterX()
+            val y = bounds.top - 1f
+            for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP)) {
+                val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action,
+                    x + if (action == MotionEvent.ACTION_DOWN) 0f else 3f, y, 0)
+                try {
+                    event.source = InputDevice.SOURCE_TOUCHSCREEN
+                    check(uiAutomation.injectInputEvent(event, false))
+                } finally {
+                    event.recycle()
+                }
+            }
+        }
+    }
+
+    private fun shell(command: String): String =
+        ParcelFileDescriptor.AutoCloseInputStream(uiAutomation.executeShellCommand(command))
+            .bufferedReader().use { it.readText() }
+
+    private fun imeRoot(): AccessibilityNodeInfo? = uiAutomation.windows
+        .firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }?.root
+
+    private fun webEditor(): AccessibilityNodeInfo? {
+        val root = uiAutomation.windows.asSequence().mapNotNull { it.root }
+            .firstOrNull { it.packageName?.toString() == context.packageName } ?: return null
+        return find(root) { it.isEditable }
+    }
+
+    private fun key(vararg names: String, prefix: Boolean = false): AccessibilityNodeInfo? =
+        imeRoot()?.let { root ->
+            find(root) { node ->
+                val label = (node.contentDescription ?: node.text)?.toString().orEmpty()
+                node.isClickable && names.any { if (prefix) label.startsWith(it) else label == it }
+            }
+        }
+
+    private fun find(node: AccessibilityNodeInfo, matches: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
+        if (matches(node)) return node
+        for (index in 0 until node.childCount) {
+            val child = node.getChild(index) ?: continue
+            find(child, matches)?.let { return it }
+        }
+        return null
+    }
+
+    private fun await(description: String, condition: () -> Boolean) {
+        val deadline = SystemClock.uptimeMillis() + 8_000
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (condition()) return
+            SystemClock.sleep(100)
+        }
+        error("Timed out waiting for $description")
+    }
+}

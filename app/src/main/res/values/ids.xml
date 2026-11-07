@@ -1,0 +1,4 @@
+<resources>
+    <item name="action_cursor_left" type="id" />
+    <item name="action_cursor_right" type="id" />
+</resources>

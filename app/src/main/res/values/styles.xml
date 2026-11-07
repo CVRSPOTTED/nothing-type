@@ -1,11 +1,11 @@
 <resources>
     <color name="icon_paper">#EEEEEA</color>
-    <string name="app_name">Nothing Type</string>
-    <string name="subtype">Nothing Type · %s</string>
-    <string name="setting_value">%1$s · %2$d %3$s</string>
+    <string name="app_name" translatable="false">Nothing Type</string>
+    <string name="subtype" translatable="false">Nothing Type · %s</string>
+    <string name="setting_value" translatable="false">%1$s · %2$d %3$s</string>
     <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#FFFFFF</item>
+        <item name="android:colorAccent">#ED4651</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowBackground">#000000</item>
         <item name="android:navigationBarColor">#000000</item>

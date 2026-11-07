@@ -5,3 +5,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "NothingType"
 include(":app")
+
+include(":swipe-research")

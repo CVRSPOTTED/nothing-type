@@ -1,0 +1,22 @@
+Categories:
+  - System
+License: MIT
+SourceCode: https://github.com/CVRSPOTTED/nothing-type
+IssueTracker: https://github.com/CVRSPOTTED/nothing-type/issues
+
+RepoType: git
+Repo: https://github.com/CVRSPOTTED/nothing-type.git
+
+# Draft recipe. Validate with fdroid build after the upstream tag is published.
+Builds:
+  - versionName: 0.5.0
+    versionCode: 8
+    commit: v0.5.0
+    subdir: app
+    gradle:
+      - yes
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 0.5.0
+CurrentVersionCode: 8
