@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="18 18 72 72">
+  <title>Nothing Type — SPACE and Enter</title>
+  <rect x="18" y="18" width="72" height="72" rx="9" fill="#000"/>
+  <circle cx="54" cy="54" r="32" fill="#FAFAFA"/>
+  <path d="M32,47H60A7,7 0 0,1 67,54A7,7 0 0,1 60,61H32A7,7 0 0,1 25,54A7,7 0 0,1 32,47Z" fill="none" stroke="#000" stroke-width="1.3"/>
+  <g fill="#000"><circle cx="31.05" cy="51.7" r="0.48"/>
+    <circle cx="32.2" cy="51.7" r="0.48"/>
+    <circle cx="33.35" cy="51.7" r="0.48"/>
+    <circle cx="34.5" cy="51.7" r="0.48"/>
+    <circle cx="29.9" cy="52.85" r="0.48"/>
+    <circle cx="31.05" cy="54" r="0.48"/>
+    <circle cx="32.2" cy="54" r="0.48"/>
+    <circle cx="33.35" cy="54" r="0.48"/>
+    <circle cx="34.5" cy="55.15" r="0.48"/>
+    <circle cx="29.9" cy="56.3" r="0.48"/>
+    <circle cx="31.05" cy="56.3" r="0.48"/>
+    <circle cx="32.2" cy="56.3" r="0.48"/>
+    <circle cx="33.35" cy="56.3" r="0.48"/>
+    <circle cx="36.8" cy="51.7" r="0.48"/>
+    <circle cx="37.95" cy="51.7" r="0.48"/>
+    <circle cx="39.1" cy="51.7" r="0.48"/>
+    <circle cx="40.25" cy="51.7" r="0.48"/>
+    <circle cx="36.8" cy="52.85" r="0.48"/>
+    <circle cx="41.4" cy="52.85" r="0.48"/>
+    <circle cx="36.8" cy="54" r="0.48"/>
+    <circle cx="37.95" cy="54" r="0.48"/>
+    <circle cx="39.1" cy="54" r="0.48"/>
+    <circle cx="40.25" cy="54" r="0.48"/>
+    <circle cx="36.8" cy="55.15" r="0.48"/>
+    <circle cx="36.8" cy="56.3" r="0.48"/>
+    <circle cx="44.85" cy="51.7" r="0.48"/>
+    <circle cx="46" cy="51.7" r="0.48"/>
+    <circle cx="47.15" cy="51.7" r="0.48"/>
+    <circle cx="43.7" cy="52.85" r="0.48"/>
+    <circle cx="48.3" cy="52.85" r="0.48"/>
+    <circle cx="43.7" cy="54" r="0.48"/>
+    <circle cx="44.85" cy="54" r="0.48"/>
+    <circle cx="46" cy="54" r="0.48"/>
+    <circle cx="47.15" cy="54" r="0.48"/>
+    <circle cx="48.3" cy="54" r="0.48"/>
+    <circle cx="43.7" cy="55.15" r="0.48"/>
+    <circle cx="48.3" cy="55.15" r="0.48"/>
+    <circle cx="43.7" cy="56.3" r="0.48"/>
+    <circle cx="48.3" cy="56.3" r="0.48"/>
+    <circle cx="51.75" cy="51.7" r="0.48"/>
+    <circle cx="52.9" cy="51.7" r="0.48"/>
+    <circle cx="54.05" cy="51.7" r="0.48"/>
+    <circle cx="55.2" cy="51.7" r="0.48"/>
+    <circle cx="50.6" cy="52.85" r="0.48"/>
+    <circle cx="50.6" cy="54" r="0.48"/>
+    <circle cx="50.6" cy="55.15" r="0.48"/>
+    <circle cx="51.75" cy="56.3" r="0.48"/>
+    <circle cx="52.9" cy="56.3" r="0.48"/>
+    <circle cx="54.05" cy="56.3" r="0.48"/>
+    <circle cx="55.2" cy="56.3" r="0.48"/>
+    <circle cx="57.5" cy="51.7" r="0.48"/>
+    <circle cx="58.65" cy="51.7" r="0.48"/>
+    <circle cx="59.8" cy="51.7" r="0.48"/>
+    <circle cx="60.95" cy="51.7" r="0.48"/>
+    <circle cx="62.1" cy="51.7" r="0.48"/>
+    <circle cx="57.5" cy="52.85" r="0.48"/>
+    <circle cx="57.5" cy="54" r="0.48"/>
+    <circle cx="58.65" cy="54" r="0.48"/>
+    <circle cx="59.8" cy="54" r="0.48"/>
+    <circle cx="60.95" cy="54" r="0.48"/>
+    <circle cx="57.5" cy="55.15" r="0.48"/>
+    <circle cx="57.5" cy="56.3" r="0.48"/>
+    <circle cx="58.65" cy="56.3" r="0.48"/>
+    <circle cx="59.8" cy="56.3" r="0.48"/>
+    <circle cx="60.95" cy="56.3" r="0.48"/>
+    <circle cx="62.1" cy="56.3" r="0.48"/></g>
+  <circle cx="76.5" cy="54" r="6.9" fill="#EF1022"/>
+  <path d="M78.9,50.8V55.2H73.8M75.8,53.2L73.8,55.2L75.8,57.2" fill="none" stroke="#FFF" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
