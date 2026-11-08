@@ -63,5 +63,49 @@ class DictationTest {
             putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, arrayListOf("проверка"))
         })
         assertEquals(listOf("проверка"), ime.words)
+        ime.onDestroy()
+    }
+    @Test fun partialSpeechIsPreviewOnlyAndLateFinalResultIsIgnoredAfterTyping() {
+        val ime = Robolectric.buildService(EditorIme::class.java).create().get()
+        shadowOf(ime.application).grantPermissions(Manifest.permission.RECORD_AUDIO)
+        ShadowSpeechRecognizer.setIsOnDeviceRecognitionAvailable(true)
+        ime.onStartInput(EditorInfo().apply { inputType = InputType.TYPE_CLASS_TEXT }, false)
+        val view = ime.onCreateInputView()
+        requireNotNull(microphone(view)).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        val speech = Shadow.extract<ShadowSpeechRecognizer>(ShadowSpeechRecognizer.getLatestSpeechRecognizer())
+        assertTrue(speech.lastRecognizerIntent.getBooleanExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, false))
+        speech.triggerOnPartialResults(Bundle().apply {
+            putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, arrayListOf("предварительно"))
+        })
+        assertTrue(ime.words.isEmpty())
+        fun textViews(view: View): List<android.widget.TextView> = when (view) {
+            is ViewGroup -> (0 until view.childCount).flatMap { textViews(view.getChildAt(it)) }
+            is android.widget.TextView -> listOf(view)
+            else -> emptyList()
+        }
+        assertTrue(textViews(view).any { it.text == "предварительно" })
+        textViews(view).filterIsInstance<Button>().first { it.text == "q" }.performClick()
+        assertTrue(speech.isDestroyed)
+        speech.triggerOnResults(Bundle().apply {
+            putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, arrayListOf("поздний результат"))
+        })
+        assertFalse(ime.words.contains("поздний результат"))
+        ime.onDestroy()
+    }
+    @Test fun offlineOnlyNeverFallsBackToTheSystemRecognizer() {
+        val ime = Robolectric.buildService(EditorIme::class.java).create().get()
+        dev.nothingtype.settings.Preferences(ime).offlineVoiceOnly = true
+        shadowOf(ime.application).grantPermissions(Manifest.permission.RECORD_AUDIO)
+        ShadowSpeechRecognizer.setIsOnDeviceRecognitionAvailable(true)
+        ime.onStartInput(EditorInfo().apply { inputType = InputType.TYPE_CLASS_TEXT }, false)
+        requireNotNull(microphone(ime.onCreateInputView())).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        val first = ShadowSpeechRecognizer.getLatestSpeechRecognizer()
+        Shadow.extract<ShadowSpeechRecognizer>(first).triggerOnError(SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertSame(first, ShadowSpeechRecognizer.getLatestSpeechRecognizer())
+        assertTrue(Shadow.extract<ShadowSpeechRecognizer>(first).isDestroyed)
+        ime.onDestroy()
     }
 }

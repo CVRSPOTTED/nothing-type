@@ -107,6 +107,7 @@ class EditorSmokeInstrumentation : Instrumentation() {
             await("IME is hidden") { imeRoot() == null }
             focus(editorActivity.editor)
             await("IME restarts in a text editor") { key("q", "Q", "й", "Й") != null }
+            runTypingBenchmark(editorActivity.editor, result)
             val external = "${context.packageName}/${ExternalEditorActivity::class.java.name}"
             check("Error" !in shell("am start -W -n $external"))
             externalStarted = true
@@ -165,6 +166,44 @@ class EditorSmokeInstrumentation : Instrumentation() {
         var value = ""
         runOnMainSync { value = editor.text.toString() }
         return value
+    }
+
+    private fun runTypingBenchmark(editor: EditText, result: Bundle) {
+        runOnMainSync {
+            editor.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            editor.setText("")
+            editor.requestFocus()
+            editor.context.getSystemService(InputMethodManager::class.java).restartInput(editor)
+        }
+        await("plain editor for typing benchmark") { key("q", "й") != null && key("w", "ц") != null }
+        val labels = listOf(if (key("q") != null) "q" else "й", if (key("w") != null) "w" else "ц")
+        val positions = labels.map { label -> Rect().also { checkNotNull(key(label)).getBoundsInScreen(it) } }
+        fun inject(index: Int, sync: Boolean) {
+            val rect = positions[index]
+            val down = SystemClock.uptimeMillis()
+            for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, rect.exactCenterX(), rect.exactCenterY(), 0)
+                event.source = InputDevice.SOURCE_TOUCHSCREEN
+                try { check(uiAutomation.injectInputEvent(event, sync)) } finally { event.recycle() }
+            }
+        }
+        val expected = StringBuilder()
+        val burstStart = SystemClock.elapsedRealtimeNanos()
+        repeat(1000) { index -> expected.append(labels[index % 2]); inject(index % 2, false) }
+        await("1000 taps arrive in the original order") { read(editor) == expected.toString() }
+        result.putLong("burst_1000_ms", (SystemClock.elapsedRealtimeNanos() - burstStart) / 1_000_000)
+        val timings = mutableListOf<Long>()
+        repeat(50) { index ->
+            val start = SystemClock.elapsedRealtimeNanos()
+            expected.append(labels[index % 2])
+            inject(index % 2, true)
+            await("sample $index reaches the editor") { read(editor) == expected.toString() }
+            timings.add((SystemClock.elapsedRealtimeNanos() - start) / 1_000_000)
+        }
+        timings.sort()
+        result.putInt("verified_taps", expected.length)
+        result.putLong("dispatch_to_editor_p50_ms", timings[timings.size / 2])
+        result.putLong("dispatch_to_editor_p95_ms", timings[(timings.size * 95 / 100).coerceAtMost(timings.lastIndex)])
     }
 
     private fun tapSequence(vararg labels: String) {

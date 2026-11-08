@@ -8,6 +8,7 @@ class KeyboardState(var language: Language = Language.EN) {
     var layer = Layer.LETTERS
     var signedNumber = false
     var decimalNumber = false
+    var compactRussian = false
     private var manualShift = false
     var shift = false
     var capsLock = false
@@ -25,6 +26,7 @@ class KeyboardState(var language: Language = Language.EN) {
     fun rows(): List<List<String>> = when (layer) {
         Layer.LETTERS -> (if (language == Language.EN)
             listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
+        else if (compactRussian) listOf("йцукенгшщзх", "фывапролджэ", "ячсмитьбю")
         else listOf("йцукенгшщзхъ", "фывапролджэ", "ячсмитьбюё"))
             .map { row -> row.map { if (shift) it.uppercaseChar().toString() else it.toString() } }
         Layer.SYMBOLS -> listOf("1234567890", "@#€%&*()-+", "!?/:;\"'=_").map { it.map(Char::toString) }

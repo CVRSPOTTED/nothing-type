@@ -81,7 +81,7 @@
     <string name="voice_help">Tap Voice to use the system speech service, which may need internet access. Voice input is hidden in password fields.</string>
     <string name="privacy_heading">Privacy</string>
     <string name="privacy_detail">Typing stays on the device. Clipboard text is read only when you tap Paste, which is hidden in password fields.</string>
-    <string name="footer">NOTHING TYPE  /  0.5.0\nIndependent Android keyboard project</string>
+    <string name="footer">NOTHING TYPE  /  0.6.0\nIndependent Android keyboard project</string>
     <string name="delete_character">Delete character</string>
     <string name="no_suggestion">No suggestion</string>
     <string name="cursor_left">Move cursor left</string>
@@ -115,4 +115,12 @@
     <string name="red_enter_help">Colors the Enter key red in both keyboard themes.</string>
     <string name="keyboard_palette_option">Keyboard theme %1$s</string>
     <string name="test_keyboard_enable_first">Enable and select Nothing Type in Android to try typing.</string>
+    <string name="compact_russian">Wider Russian keys</string>
+    <string name="compact_russian_help">Ё is available by holding Е; Ъ by holding Ь. Turn off to show all letters as separate keys.</string>
+    <string name="personal_dictionary">My words</string>
+    <string name="personal_dictionary_help">Add up to 500 Russian or English words manually. They appear in suggestions and are not autocorrected. No automatic learning.</string>
+    <string name="personal_dictionary_hint">One word per line</string>
+    <string name="offline_voice_only">Offline voice input only</string>
+    <string name="voice_local_missing">Offline speech recognition is unavailable. Install an offline speech service and language model, or disable offline-only mode.</string>
+    <string name="open_android_settings">Open Android settings</string>
 </resources>

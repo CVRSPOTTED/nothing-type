@@ -221,6 +221,8 @@ class MainActivity : Activity() {
                 20
             ).apply {
                 isSelected = selected
+                minHeight = dp(48)
+                setPadding(dp(4), dp(10), dp(4), dp(10))
                 if (installed) typeface = KeyboardFonts.resolve(this@MainActivity, font)
                 else contentDescription = getString(R.string.import_ndot)
                 setOnClickListener {
@@ -230,7 +232,7 @@ class MainActivity : Activity() {
                         updateNdotHint()
                     } else pickNdot()
                 }
-            }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+            }, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
         }
         page.addView(label(getString(R.string.keyboard_font), 16f, ink))
         page.addView(fonts)
@@ -241,22 +243,26 @@ class MainActivity : Activity() {
         val themes = LinearLayout(this)
         Palette.entries.forEach { palette ->
             themes.addView(action(palette.title, surface, ink, 20).apply {
+                minHeight = dp(48)
+                setPadding(dp(4), dp(10), dp(4), dp(10))
                 contentDescription = getString(R.string.keyboard_palette_option, palette.title)
                 setOnClickListener {
                     prefs.palette = palette
                     updateChoices(themes, palette.ordinal)
                 }
-            }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+            }, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
         }
         page.addView(themes)
         updateChoices(themes, prefs.palette.ordinal)
         val accentChoice = LinearLayout(this)
         accentChoice.addView(action(getString(R.string.red_enter), surface, ink, 20).apply {
+            minHeight = dp(48)
+            setPadding(dp(4), dp(10), dp(4), dp(10))
             setOnClickListener {
                 prefs.redEnter = !prefs.redEnter
                 updateChoices(accentChoice, if (prefs.redEnter) 0 else -1)
             }
-        }, LinearLayout.LayoutParams(-1, dp(48)).apply {
+        }, LinearLayout.LayoutParams(-1, -2).apply {
             setMargins(dp(2), dp(8), dp(2), 0)
         })
         page.addView(accentChoice)
@@ -298,6 +304,8 @@ class MainActivity : Activity() {
         heading(getString(R.string.input_heading), getString(R.string.input_detail))
         slider(getString(R.string.landscape_height), 30, 48, prefs.landscapeHeight) { prefs.landscapeHeight = it }
         toggle(getString(R.string.number_row), prefs.numbers) { prefs.numbers = it }
+        toggle(getString(R.string.compact_russian), prefs.compactRussian) { prefs.compactRussian = it }
+        page.addView(label(getString(R.string.compact_russian_help), 12f, muted))
         toggle(getString(R.string.toolbar), prefs.toolbar) { prefs.toolbar = it }
         toggle(getString(R.string.instant_input), prefs.instantInput) { prefs.instantInput = it }
         page.addView(label(getString(R.string.input_help), 12f, muted))
@@ -320,10 +328,13 @@ class MainActivity : Activity() {
         page.addView(label(getString(R.string.suggestions_help), 12f, muted))
         toggle(getString(R.string.autocorrect), prefs.autocorrect) { prefs.autocorrect = it }
         page.addView(label(getString(R.string.autocorrect_help), 12f, muted))
+        button(page, getString(R.string.personal_dictionary)) { editPersonalDictionary() }
+        page.addView(label(getString(R.string.personal_dictionary_help), 12f, muted))
         heading(getString(R.string.feedback_heading), getString(R.string.feedback_detail))
         toggle(getString(R.string.haptic_feedback), prefs.haptics) { prefs.haptics = it }
         toggle(getString(R.string.key_sound), prefs.sound) { prefs.sound = it }
         button(page, getString(R.string.configure_microphone)) { openExternalScreen(Intent(this, VoicePermissionActivity::class.java)) }
+        toggle(getString(R.string.offline_voice_only), prefs.offlineVoiceOnly) { prefs.offlineVoiceOnly = it }
         page.addView(label(getString(R.string.voice_help), 12f, muted))
     }
 
@@ -356,6 +367,24 @@ class MainActivity : Activity() {
         dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
         editor.requestFocus()
         dialog.show()
+    }
+
+    private fun editPersonalDictionary() {
+        val editor = EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            imeOptions = android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+            setText(prefs.personalWords.sorted().joinToString("\n"))
+            minLines = 3
+            maxLines = 8
+            filters = arrayOf(android.text.InputFilter.LengthFilter(24500))
+            hint = getString(R.string.personal_dictionary_hint)
+        }
+        val container = FrameLayout(this).apply { setPadding(dp(20), dp(8), dp(20), dp(8)); addView(editor) }
+        android.app.AlertDialog.Builder(this).setTitle(R.string.personal_dictionary).setView(container)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                prefs.personalWords = editor.text.toString().split(Regex("[\\s,;]+")).toSet()
+            }.setNegativeButton(android.R.string.cancel, null).show()
     }
 
     private fun updateNdotHint() {

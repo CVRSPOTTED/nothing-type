@@ -8,3 +8,13 @@ local.properties
 *.keystore
 .DS_Store
 captures/
+
+*.p12
+*.pfx
+key.properties
+signing.properties
+.env
+
+*.apk
+*.aab
+app/release/

@@ -11,7 +11,16 @@ Repo: https://github.com/CVRSPOTTED/nothing-type.git
 Builds:
   - versionName: 0.5.0
     versionCode: 8
-    commit: v0.5.0
+    commit: 22663ff8e49b278a2f224aa13e6f733b161b0c8d
+    subdir: app
+    gradle:
+      - yes
+
+  # Pending: publish and validate this tag before submitting the recipe.
+  - versionName: 0.6.0
+    versionCode: 9
+    commit: v0.6.0
+    disable: Pending source publication and device release checks
     subdir: app
     gradle:
       - yes

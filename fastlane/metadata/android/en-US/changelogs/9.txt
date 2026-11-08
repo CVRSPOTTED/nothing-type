@@ -1,0 +1,1 @@
+Fix text loss in editors without composition. Delete whole emoji sequences. Stable suggestion row. 10,000-word offline RU/EN dictionaries and manual words. Wider optional Russian layout. Voice preview and offline-only dictation. More lifecycle and typing tests.

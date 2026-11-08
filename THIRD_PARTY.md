@@ -16,3 +16,11 @@ Emoji sequences and English names from [Unicode Emoji 16.0](https://www.unicode.
 - Roboto Regular uses the [SIL Open Font License 1.1](app/src/main/assets/fonts/Roboto-OFL.txt).
 - Geist Regular uses the [SIL Open Font License 1.1](app/src/main/assets/fonts/Geist-OFL.txt).
 - Ndot is imported from a file selected by the user and stored locally.
+
+Frequency dictionary data (10,000 words per language) is adapted from
+[Hermit Dave / FrequencyWords](https://github.com/hermitdave/FrequencyWords),
+based on the OpenSubtitles 2018 corpus. It is licensed separately under
+[CC BY-SA 4.0](app/src/main/assets/dictionaries/CC-BY-SA-4.0.txt).
+The pinned revision, filtering changes and attribution are recorded in
+[the dataset source note](app/src/main/assets/dictionaries/SOURCE.md).
+The application code remains MIT. No dictionary data is downloaded at runtime.

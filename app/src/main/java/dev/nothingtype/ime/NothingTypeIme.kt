@@ -11,13 +11,6 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodSubtype
 import android.widget.Toast
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import java.util.concurrent.Executors
 import dev.nothingtype.app.MainActivity
 import dev.nothingtype.keyboard.Command
@@ -26,7 +19,7 @@ import dev.nothingtype.keyboard.KeyboardPanel
 import dev.nothingtype.keyboard.KeyboardState
 import dev.nothingtype.keyboard.Language
 import dev.nothingtype.keyboard.Layer
-import dev.nothingtype.keyboard.Suggestions
+import dev.nothingtype.keyboard.DictionaryRepository
 import dev.nothingtype.R
 import dev.nothingtype.settings.Preferences
 
@@ -39,26 +32,34 @@ open class NothingTypeIme : InputMethodService() {
     private var customAction = false
     private var rawInput = false
     private var keyboard: KeyboardPanel? = null
-    private val dictionary = Suggestions()
+    private var dictionary = DictionaryRepository.fallback
+    private var dictionaryRequest = 0
+    private var destroyed = false
     private val composing = StringBuilder()
     private data class Correction(val original: String, val replacement: String, var cursorEnd: Int? = null)
     private var undoCorrection: Correction? = null
     private var keepOriginal = false
     private var allowSuggestions = false
     private var allowAutocorrect = false
+    private var compositionSupported = true
     private var capsMode = 0
     private val capsExecutor = Executors.newSingleThreadExecutor()
     @Volatile private var capsRequest = 0
     private var recentTyping = ""
-    private var recognizer: SpeechRecognizer? = null
-    private var voiceGeneration = 0
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    private val voiceTimeout = Runnable {
-        stopVoice()
-        Toast.makeText(this, getString(R.string.voice_timeout), Toast.LENGTH_LONG).show()
+    private val dictation by lazy {
+        DictationController(this, { currentInputConnection }, { isInputViewShown }, { privateField || rawInput },
+            { state.language }, { prefs.offlineVoiceOnly }, ::finishWord,
+            { keyboard?.updateVoice(it) }, { keyboard?.updateVoiceLevel(it) }, { keyboard?.updateVoicePreview(it) })
     }
 
-    override fun onCreate() { super.onCreate(); prefs = Preferences(this); state = KeyboardState(prefs.language) }
+    override fun onCreate() { super.onCreate(); prefs = Preferences(this); state = KeyboardState(prefs.language); loadDictionary() }
+    private fun loadDictionary() {
+        val request = ++dictionaryRequest
+        DictionaryRepository.load(this, prefs.personalWords) { loaded ->
+            if (!destroyed && request == dictionaryRequest) { dictionary = loaded; updateSuggestions() }
+        }
+    }
     override fun onEvaluateFullscreenMode() = false
     override fun onCreateInputView(): View = panel()
 
@@ -69,6 +70,7 @@ open class NothingTypeIme : InputMethodService() {
         stopVoice()
         if (restarting) currentInputConnection?.finishComposingText()
         composing.clear()
+        compositionSupported = true
         undoCorrection = null
         keepOriginal = false
         state = KeyboardState(prefs.language)
@@ -120,6 +122,7 @@ open class NothingTypeIme : InputMethodService() {
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         state.language = prefs.language
+        loadDictionary()
         setInputView(panel())
     }
 
@@ -156,6 +159,7 @@ open class NothingTypeIme : InputMethodService() {
     }
 
     private fun refreshCapsFromEditor() {
+        if (destroyed) return
         val request = ++capsRequest
         val mode = capsMode
         if (mode == 0 || alwaysCapitalize) return
@@ -163,9 +167,9 @@ open class NothingTypeIme : InputMethodService() {
         // A remote editor can take time to answer. Keep its reads off the touch thread.
         capsExecutor.execute {
             if (request != capsRequest) return@execute
-            val enabled = connection.getCursorCapsMode(mode) != 0
+            val enabled = runCatching { connection.getCursorCapsMode(mode) != 0 }.getOrDefault(false)
             mainHandler.post {
-                if (request == capsRequest && currentInputConnection === connection) setAutomaticShift(enabled)
+                if (!destroyed && request == capsRequest && currentInputConnection === connection) setAutomaticShift(enabled)
             }
         }
     }
@@ -201,11 +205,17 @@ open class NothingTypeIme : InputMethodService() {
             }
             return
         }
-        if (allowSuggestions && (prefs.suggestions || (prefs.autocorrect && allowAutocorrect)) &&
+        if (compositionSupported && allowSuggestions && (prefs.suggestions || (prefs.autocorrect && allowAutocorrect)) &&
             text.all(Char::isLetter) && composing.length < 48) {
             keepOriginal = false
             composing.append(text)
-            connection.setComposingText(composing.toString(), 1)
+            if (!connection.setComposingText(composing.toString(), 1)) {
+                // Some custom editors accept commitText but reject composing text.
+                // Preserve the whole pending word once and stop composing for this session.
+                connection.commitText(composing.toString(), 1)
+                composing.clear()
+                compositionSupported = false
+            }
             updateSuggestions()
         } else {
             if (composing.isEmpty()) {
@@ -224,6 +234,7 @@ open class NothingTypeIme : InputMethodService() {
     private fun commitWord(separator: String) {
         val original = composing.toString()
         val correction = if (prefs.autocorrect && allowAutocorrect && !keepOriginal &&
+            original.lowercase(java.util.Locale.ROOT) !in prefs.personalWords &&
             (separator.isEmpty() || (separator.length == 1 && separator[0] in " \n.,!?;:"))) dictionary.correction(original, state.language) else null
         val connection = currentInputConnection ?: return
         if (correction != null && connection.commitText(correction + separator, 1)) {
@@ -301,108 +312,16 @@ open class NothingTypeIme : InputMethodService() {
         composing.clear(); keyboard?.updateSuggestions(emptyList())
         super.onFinishInput()
     }
-    override fun onDestroy() { capsRequest++; capsExecutor.shutdownNow(); stopVoice(); super.onDestroy() }
-
-    private fun stopVoice() {
-        val speech = recognizer ?: return
-        mainHandler.removeCallbacks(voiceTimeout)
-        voiceGeneration++
-        recognizer = null
-        speech.cancel(); speech.destroy()
-        keyboard?.updateVoice(getString(R.string.voice_idle))
+    override fun onDestroy() {
+        destroyed = true; dictionaryRequest++; capsRequest++
+        mainHandler.removeCallbacksAndMessages(null)
+        capsExecutor.shutdownNow()
+        stopVoice()
+        super.onDestroy()
     }
 
-    private fun toggleVoice() {
-        if (privateField) return
-        if (recognizer != null) {
-            recognizer?.stopListening(); keyboard?.updateVoice(getString(R.string.voice_wait)); return
-        }
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            startActivity(Intent(this, VoicePermissionActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            return
-        }
-        val local = Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(this)
-        if (!local && !SpeechRecognizer.isRecognitionAvailable(this)) {
-            Toast.makeText(this, getString(R.string.voice_missing), Toast.LENGTH_LONG).show(); return
-        }
-        finishWord()
-        val target = currentInputConnection ?: return
-        startVoiceAttempt(target, local)
-    }
-
-    private fun startVoiceAttempt(target: android.view.inputmethod.InputConnection, local: Boolean) {
-        val generation = ++voiceGeneration
-        fun retrySystem(): Boolean {
-            if (!local || currentInputConnection !== target || !isInputViewShown || privateField ||
-                !SpeechRecognizer.isRecognitionAvailable(this)) return false
-            stopVoice()
-            startVoiceAttempt(target, false)
-            return true
-        }
-        try {
-            val speech = if (local && Build.VERSION.SDK_INT >= 31) SpeechRecognizer.createOnDeviceSpeechRecognizer(this)
-                         else SpeechRecognizer.createSpeechRecognizer(this)
-            recognizer = speech
-            speech.setRecognitionListener(object : RecognitionListener {
-                private var listening = false
-                private fun active() = generation == voiceGeneration && currentInputConnection === target && isInputViewShown
-                override fun onReadyForSpeech(params: Bundle?) {
-                    if (active()) {
-                        listening = true
-                        keyboard?.updateVoice(getString(R.string.voice_stop))
-                    }
-                }
-                override fun onBeginningOfSpeech() = Unit
-                override fun onRmsChanged(rmsdB: Float) {
-                    if (active() && listening) keyboard?.updateVoiceLevel(rmsdB)
-                }
-                override fun onBufferReceived(buffer: ByteArray?) = Unit
-                override fun onEndOfSpeech() {
-                    listening = false
-                    if (active()) keyboard?.updateVoice(getString(R.string.voice_wait))
-                }
-                override fun onError(error: Int) {
-                    if (generation != voiceGeneration) return
-                    if (error in setOf(SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED, SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE,
-                            SpeechRecognizer.ERROR_CLIENT, SpeechRecognizer.ERROR_SERVER, SpeechRecognizer.ERROR_SERVER_DISCONNECTED)
-                        && retrySystem()) return
-                    val message = when (error) {
-                        SpeechRecognizer.ERROR_AUDIO -> getString(R.string.voice_audio)
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> getString(R.string.voice_busy)
-                        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> getString(R.string.voice_no_match)
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> getString(R.string.voice_permission)
-                        SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED, SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> getString(R.string.voice_language)
-                        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> getString(R.string.voice_network)
-                        else -> getString(R.string.voice_error_code, error)
-                    }
-                    stopVoice(); Toast.makeText(this@NothingTypeIme, message, Toast.LENGTH_LONG).show()
-                }
-                override fun onResults(results: Bundle?) {
-                    if (generation != voiceGeneration) return
-                    if (active()) {
-                        val phrase = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull { it.isNotBlank() }
-                        if (phrase == null || !target.commitText(phrase, 1)) {
-                            Toast.makeText(this@NothingTypeIme, if (phrase == null) getString(R.string.voice_empty) else getString(R.string.voice_rejected), Toast.LENGTH_LONG).show()
-                        }
-                    }
-                    stopVoice()
-                }
-                override fun onPartialResults(partialResults: Bundle?) = Unit
-                override fun onEvent(eventType: Int, params: Bundle?) = Unit
-            })
-            keyboard?.updateVoice(getString(R.string.voice_listen))
-            speech.startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (state.language == Language.RU) "ru-RU" else "en-US")
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            })
-            mainHandler.postDelayed(voiceTimeout, 30_000)
-        } catch (_: Exception) {
-            if (retrySystem()) return
-            stopVoice(); Toast.makeText(this, getString(R.string.voice_error), Toast.LENGTH_LONG).show()
-        }
-    }
+    private fun stopVoice() = dictation.stop()
+    private fun toggleVoice() = dictation.toggle()
 
     private fun keyEvent(code: Int) {
         sendDownUpKeyEvents(code)
@@ -425,8 +344,7 @@ open class NothingTypeIme : InputMethodService() {
                     connection?.setComposingText(composing.toString(), 1)
                     if (composing.isEmpty()) connection?.finishComposingText()
                     updateSuggestions()
-                } else if (!connection?.getSelectedText(0).isNullOrEmpty()) connection?.commitText("", 1)
-                else if (connection?.deleteSurroundingTextInCodePoints(1, 0) != true) keyEvent(KeyEvent.KEYCODE_DEL)
+                } else if (connection == null || !EditorDeletion.delete(connection)) keyEvent(KeyEvent.KEYCODE_DEL)
             }
             Command.ENTER -> if (rawInput) {
                 keyEvent(KeyEvent.KEYCODE_ENTER)

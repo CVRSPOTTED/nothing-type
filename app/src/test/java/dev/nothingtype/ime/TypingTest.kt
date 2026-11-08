@@ -79,6 +79,13 @@ class TypingTest {
         type(view, "helllo ")
         assertEquals("hello ", ime.connection.editable.toString())
     }
+    @Test fun manualExceptionsApplyImmediatelyBeforeTheLargeDictionaryIsReady() {
+        val (ime, view) = editor()
+        Preferences(ime).personalWords = setOf("helllo")
+        type(view, "helllo ")
+        assertEquals("helllo ", ime.connection.editable.toString())
+        ime.onDestroy()
+    }
 
     @Test fun correctionCanBeDisabledAndNeverChangesSensitiveOrAddressFields() {
         val cases = listOf(

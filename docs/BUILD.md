@@ -37,3 +37,5 @@ APK появится в `app/build/outputs/apk/debug/app-debug.apk`.
 в пакетах `dev.nothingtype`.
 
 [Проверка на устройстве](TESTING.md) · [Подпись релиза](RELEASE.md) · [Аудит готовности](ANDROID_QUALITY_AUDIT.md)
+
+Для текущей Windows-машины рабочий проект находится в D:\Projects\NothingType; JDK 17 — в D:\DevTools\jdk-17. Папки .idea и .gradle с местными путями не входят в Git. Новые модули: ime/EditorDeletion — графемы, ime/DictationController — жизненный цикл диктовки, keyboard/DictionaryRepository — фоновая загрузка словарей.

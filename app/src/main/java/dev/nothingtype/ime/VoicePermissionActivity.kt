@@ -14,10 +14,28 @@ class VoicePermissionActivity : Activity() {
         super.onCreate(savedInstanceState)
         requesting = savedInstanceState?.getBoolean("requesting") ?: false
         if (requesting) return
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, R.string.permission_granted, Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+        val history = getPreferences(MODE_PRIVATE)
+        val blocked = history.getBoolean("microphone_requested", false) &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
         AlertDialog.Builder(this)
             .setTitle(getString(R.string.voice_input))
             .setMessage(getString(R.string.permission_message))
-            .setPositiveButton(getString(R.string.permission_continue)) { _, _ -> requesting = true; requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1) }
+            .setPositiveButton(getString(if (blocked) R.string.open_android_settings else R.string.permission_continue)) { _, _ ->
+                if (blocked) {
+                    startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        android.net.Uri.parse("package:$packageName")))
+                    finish()
+                } else {
+                    requesting = true
+                    history.edit().putBoolean("microphone_requested", true).apply()
+                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1)
+                }
+            }
             .setNegativeButton(getString(R.string.permission_cancel)) { _, _ -> finish() }
             .setOnCancelListener { finish() }.show()
     }

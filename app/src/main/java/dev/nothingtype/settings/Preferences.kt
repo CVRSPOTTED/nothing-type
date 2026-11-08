@@ -14,6 +14,16 @@ enum class LanguageSwitch { SPACE_HOLD, BUTTON }
 class Preferences(context: Context) {
     private val data = context.getSharedPreferences("keyboard", Context.MODE_PRIVATE)
 
+    /** Explicitly entered words only. Never learn from an editor or microphone. */
+    var personalWords: Set<String>
+        get() = data.getStringSet("personal_words", emptySet()).orEmpty().toSet()
+        set(value) {
+            val words = value.asSequence().map { it.trim().lowercase(java.util.Locale.ROOT) }
+                .filter { it.length in 2..48 && (it.all { c -> c in 'a'..'z' } || it.all { c -> c in 'а'..'я' || c == 'ё' }) }
+                .distinct().take(500).toSet()
+            data.edit().putStringSet("personal_words", words).apply()
+        }
+
     var palette: Palette
         get() = if (data.getString("palette", null) == "LIGHT") Palette.LIGHT else Palette.DARK
         set(value) {
@@ -45,12 +55,18 @@ class Preferences(context: Context) {
     var numbers: Boolean
         get() = data.getBoolean("numbers", true)
         set(value) { data.edit().putBoolean("numbers", value).apply() }
+    var compactRussian: Boolean
+        get() = data.getBoolean("compact_russian", true)
+        set(value) { data.edit().putBoolean("compact_russian", value).apply() }
     var haptics: Boolean
         get() = data.getBoolean("haptics", true)
         set(value) { data.edit().putBoolean("haptics", value).apply() }
     var sound: Boolean
         get() = data.getBoolean("sound", false)
         set(value) { data.edit().putBoolean("sound", value).apply() }
+    var offlineVoiceOnly: Boolean
+        get() = data.getBoolean("offline_voice_only", false)
+        set(value) { data.edit().putBoolean("offline_voice_only", value).apply() }
 
     private fun number(key: String, default: Int, range: IntRange) = data.getInt(key, default).coerceIn(range)
     private fun save(key: String, value: Int, range: IntRange) { data.edit().putInt(key, value.coerceIn(range)).apply() }

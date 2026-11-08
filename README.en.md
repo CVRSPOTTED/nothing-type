@@ -40,8 +40,7 @@ Suggestions run locally. Typed text is not saved as a history.
 Voice input uses your system speech service, which may need internet access.
 [Privacy policy, in Russian](PRIVACY.md)
 
-Autocorrect uses a small built-in dictionary. Glide typing, a personal dictionary
-and next-word prediction are planned.
+The 0.6.0 source adds 10,000 words per language and manually entered personal words. Glide typing and next-word prediction remain in development.
 
 ## Build
 
@@ -54,6 +53,8 @@ bash ./gradlew testDebugUnitTest :swipe-research:test lintDebug assembleDebug
 ```
 
 On Windows, use `gradlew.bat`.
-[Build notes](docs/BUILD.md) · [Test results](docs/VALIDATION.md) · [Changelog](CHANGELOG.md)
+[Build notes](docs/BUILD.md) · [Test results](docs/VALIDATION_0.6.0.md) · [Changelog](CHANGELOG.md)
 
 [MIT license](LICENSE) · [Third-party licenses](THIRD_PARTY.md)
+
+In development: 0.6.0 adds larger offline dictionaries, manual words, typing fixes and voice previews. The download above is the published 0.5.0 preview.

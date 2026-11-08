@@ -81,7 +81,7 @@
     <string name="voice_help">Нажмите «Голос» в клавиатуре. Распознавание выполняет системная служба; ей может потребоваться интернет. В паролях голосовой ввод скрыт.</string>
     <string name="privacy_heading">Личное остаётся личным</string>
     <string name="privacy_detail">Нет разрешения на интернет, аналитики и истории ввода. Буфер читается только по нажатию «Вставить»; в полях паролей эта кнопка скрыта.</string>
-    <string name="footer">NOTHING TYPE  /  0.5.0\nНезависимый проект Android</string>
+    <string name="footer">NOTHING TYPE  /  0.6.0\nНезависимый проект Android</string>
     <string name="delete_character">Удалить символ</string>
     <string name="no_suggestion">Нет предложения</string>
     <string name="cursor_left">Переместить курсор влево</string>
@@ -115,4 +115,12 @@
     <string name="red_enter_help">Делает клавишу Enter красной в обеих темах клавиатуры.</string>
     <string name="keyboard_palette_option">Тема клавиатуры %1$s</string>
     <string name="test_keyboard_enable_first">Включи и выбери Nothing Type в Android, чтобы проверить ввод.</string>
+    <string name="compact_russian">Шире клавиши русской раскладки</string>
+    <string name="compact_russian_help">Ё — удержанием Е, Ъ — удержанием Ь. Выключите, чтобы вернуть отдельные клавиши для всех букв.</string>
+    <string name="personal_dictionary">Мои слова</string>
+    <string name="personal_dictionary_help">Добавьте до 500 слов на русском или английском вручную. Они появятся в подсказках и не будут исправляться. Автоматического обучения нет.</string>
+    <string name="personal_dictionary_hint">Одно слово на строку</string>
+    <string name="offline_voice_only">Голосовой ввод только без сети</string>
+    <string name="voice_local_missing">Локальное распознавание недоступно. Установите службу и языковую модель или выключите режим без сети.</string>
+    <string name="open_android_settings">Открыть настройки Android</string>
 </resources>

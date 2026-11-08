@@ -1,30 +1,50 @@
-# Сборка и подпись релиза
+# Подпись и выпуск
 
-Для 0.5.0 код версии — 8. Из корня проекта запустите:
+Версия в разработке: 0.6.0, versionCode 9. JDK 17, Android SDK 36.
+
+## Ключ владельца
+
+Если ключа ещё нет: Android Studio → открыть проект → Build → Generate Signed
+Bundle / APK → APK → Create new. Сохраните JKS вне проекта, например
+`D:\NothingType-signing\nothing-type-release.jks`. Срок — минимум 25 лет.
+Сохраните ключ и пароли в резервной копии. Не добавляйте их в GitHub.
 
 ```powershell
-.\gradlew.bat testDebugUnitTest :swipe-research:test lintDebug assembleRelease
+.\scripts\build-release.ps1 -Keystore 'D:\NothingType-signing\nothing-type-release.jks' -Alias 'nothing-type'
 ```
 
-Gradle создаёт `app/build/outputs/apk/release/app-release-unsigned.apk`. Подписывайте его ключом владельца приложения. Утилита Android SDK запросит пароли в терминале:
+Пароли вводятся скрыто в вашем терминале и передаются Gradle только на время
+процесса. Скрипт восстанавливает прежнее окружение. Подписанный результат:
+`app/build/outputs/apk/release/app-release.apk`.
+Без переменных подписи `assembleRelease` создаёт только unsigned APK.
+
+Проверка Android SDK:
 
 ```powershell
-apksigner sign --ks "C:\path\to\release.p12" --ks-key-alias "your-alias" --out nothing-type-0.5.0-release.apk app/build/outputs/apk/release/app-release-unsigned.apk
-apksigner verify --verbose --print-certs nothing-type-0.5.0-release.apk
+apksigner verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
 ```
 
-Если сертификат отличается от сертификата установленного debug APK, Android потребует удалить debug-версию перед первой установкой release. При удалении сбрасываются локальные настройки клавиатуры. Для обновлений release сохраняйте тот же ключ.
+Проверьте отпечаток сертификата и установку обновления с тем же ключом.
+Release с новым сертификатом не установится поверх debug APK; удаление старой
+debug-версии сбросит её настройки. Не переименовывайте applicationId ради подписи.
+
+## Перед публикацией
+
+1. Пройти автоматические и ручные проверки из TESTING.md.
+2. Проверить лицензию кода, шрифтов, эмодзи и словарей в THIRD_PARTY.md.
+3. Зафиксировать исходники, результаты проверок и тег версии.
+4. Собрать и проверить подписанный APK, приложить SHA-256.
+5. Обновить снимки и метаданные магазина.
 
 ## F-Droid
 
-Тексты карточки и список изменений лежат в `fastlane/metadata/android`. Для подачи добавьте иконку и актуальные снимки с Android, опубликуйте исходники с тегом `v0.5.0` и проверьте сборку через `fdroid build`. Черновик рецепта для fdroiddata находится в [fdroid/metadata/dev.keyloom.keyboard.yml](../fdroid/metadata/dev.keyloom.keyboard.yml).
+Рецепт `fdroid/metadata/dev.keyloom.keyboard.yml` — черновик. Сборку рецепта
+нужно отдельно выполнить в актуальной среде fdroidserver после публикации тега.
+Обычный F-Droid подписывает сборку своим ключом; это не подпись владельца.
+Заявка в каталог и её одобрение не выполняются автоматически этим проектом.
+Слова FrequencyWords поставляются под CC BY-SA 4.0 отдельно от MIT-кода.
+Источник, изменения и полный текст лицензии находятся в assets/dictionaries.
 
-Стандартный процесс F-Droid собирает APK из исходников и подписывает его своим ключом. Для пользовательского ключа в каталоге нужен отдельный процесс воспроизводимой сборки. Перед подачей проверьте актуальную политику включения, лицензии кода и ресурсов, метаданные и рецепт сборки.
-
-Текущий проект использует compileSdk/targetSdk 36. На 7 ноября 2026 года
-это требуемый target для нового приложения или обновления в Google Play.
-Перед публикацией требуется также закрыть ручные проверки, подготовить
-подпись владельца и выполнить требования выбранного канала распространения.
-[Требования Google Play](https://support.google.com/googleplay/android-developer/answer/11926878?hl=en), [аудит готовности](ANDROID_QUALITY_AUDIT.md)
-
-[Руководство по подаче](https://f-droid.org/docs/Submitting_to_F-Droid_Quick_Start_Guide/) · [Условия включения](https://f-droid.org/docs/Inclusion_Policy/)
+Документация:
+- https://developer.android.com/studio/publish/app-signing
+- https://f-droid.org/docs/Submitting_to_F-Droid_Quick_Start_Guide/

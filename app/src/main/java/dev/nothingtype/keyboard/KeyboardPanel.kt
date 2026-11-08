@@ -40,6 +40,9 @@ class KeyboardPanel(
     private val candidateButtons = mutableListOf<Button>()
     private var shiftButton: InstantKey? = null
     private var voiceButton: Button? = null
+    private var voiceRow: LinearLayout? = null
+    private var voiceSummary: android.widget.TextView? = null
+    private var voicePreview = ""
     private var toolsRow: LinearLayout? = null
     private var candidatesRow: LinearLayout? = null
     private var cachedCandidates = emptyList<String>()
@@ -73,9 +76,15 @@ class KeyboardPanel(
         val first = typingRows.first()
         if (indexOfChild(first) > 0 && y < first.top) return null
         val row = typingRows.minByOrNull { maxOf(it.top - y, 0f, y - it.bottom) } ?: return null
-        return (0 until row.childCount).map { row.getChildAt(it) }.filterIsInstance<InstantKey>()
-            .filter { it.isEnabled && it.visibility == VISIBLE }
-            .minByOrNull { maxOf(row.left + it.left - x, 0f, x - row.left - it.right) }
+        var nearest: InstantKey? = null
+        var distance = Float.MAX_VALUE
+        for (index in 0 until row.childCount) {
+            val key = row.getChildAt(index) as? InstantKey ?: continue
+            if (!key.isEnabled || key.visibility != VISIBLE) continue
+            val delta = maxOf(row.left + key.left - x, 0f, x - row.left - key.right)
+            if (delta < distance) { nearest = key; distance = delta }
+        }
+        return nearest
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean =
@@ -110,6 +119,8 @@ class KeyboardPanel(
         }
         button.isSoundEffectsEnabled = prefs.sound
         button.textSize = if (text.length > 4) 12f else prefs.fontSize.toFloat()
+        button.setAutoSizeTextTypeUniformWithConfiguration(10, maxOf(12, if (text.length > 4) 12 else prefs.fontSize), 1,
+            android.util.TypedValue.COMPLEX_UNIT_SP)
         val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         val height = if (landscape && resources.configuration.smallestScreenWidthDp < 600) prefs.landscapeHeight else prefs.keyHeight
         row.addView(button, LayoutParams(0, context.dp(height), weight).apply { setMargins(context.dp(prefs.keyGap), context.dp(3), context.dp(prefs.keyGap), context.dp(3)) })
@@ -213,9 +224,13 @@ class KeyboardPanel(
 
     fun updateSuggestions(values: List<String>) {
         cachedCandidates = values
+        val speaking = voiceStatus != context.getString(R.string.voice_idle) && voiceRow != null
         val show = values.isNotEmpty() && candidatesRow != null
-        candidatesRow?.visibility = if (show) VISIBLE else GONE
-        toolsRow?.visibility = if (show) GONE else VISIBLE
+        // Without a toolbar there is no replacement row. Reserve its height from
+        // the start so suggestions never move the keys under a typing finger.
+        candidatesRow?.visibility = if (speaking) GONE else if (show) VISIBLE else if (prefs.toolbar) GONE else INVISIBLE
+        toolsRow?.visibility = if (speaking || show) GONE else VISIBLE
+        voiceRow?.visibility = if (speaking) VISIBLE else GONE
         candidateButtons.forEachIndexed { index, button ->
             val text = values.getOrNull(index).orEmpty()
             if (button.text != text) button.text = text
@@ -228,6 +243,7 @@ class KeyboardPanel(
     }
     fun updateVoice(status: String) {
         voiceStatus = status
+        voiceSummary?.text = voicePreview.ifBlank { status }
         if (status == context.getString(R.string.voice_idle) || status == context.getString(R.string.voice_wait)) {
             ambientDrawable?.clearVoiceLevel()
         }
@@ -238,6 +254,11 @@ class KeyboardPanel(
                 if (status == context.getString(R.string.voice_idle)) prefs.palette.ink else prefs.palette.accent)
             invalidate()
         }
+        updateSuggestions(cachedCandidates)
+    }
+    fun updateVoicePreview(text: String) {
+        voicePreview = text
+        voiceSummary?.text = text.ifBlank { voiceStatus }
     }
     fun updateVoiceLevel(rmsDb: Float) { ambientDrawable?.updateVoiceLevel(rmsDb) }
     fun updateCase() {
@@ -286,9 +307,11 @@ class KeyboardPanel(
         typingRows.clear()
         lastTypingKey = null
         renderedShift = state.shift
+        state.compactRussian = prefs.compactRussian
         keyTypeface = KeyboardFonts.resolve(context, prefs.keyboardFont)
         removeAllViews()
         letterButtons.clear(); candidateButtons.clear(); shiftButton = null; voiceButton = null; toolsRow = null; candidatesRow = null
+        voiceRow = null; voiceSummary = null
         ambientDrawable?.running = false
         setPadding(context.dp(4), context.dp(6), context.dp(4), context.dp(8))
         ambientDrawable = if (prefs.ambient) AmbientDrawable(prefs.palette.canvas) else null
@@ -308,6 +331,20 @@ class KeyboardPanel(
                 voiceButton = tool(tools, R.drawable.tool_mic, context.getString(R.string.voice_input)) { command(Command.VOICE) }
                 updateVoice(voiceStatus)
             }
+        }
+        if (prefs.toolbar && !sensitive && !numeric) {
+            val listening = row().also { voiceRow = it; it.visibility = GONE }
+            voiceSummary = android.widget.TextView(context).apply {
+                text = voicePreview.ifBlank { voiceStatus }
+                textSize = 14f
+                setTextColor(prefs.palette.ink)
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                accessibilityLiveRegion = ACCESSIBILITY_LIVE_REGION_POLITE
+                setPadding(context.dp(8), 0, context.dp(8), 0)
+            }.also { listening.addView(it, LayoutParams(0, context.dp(54), 4f)) }
+            tool(listening, R.drawable.tool_mic, context.getString(R.string.voice_stop)) { command(Command.VOICE) }
         }
         if (prefs.suggestions && !sensitive && !numeric && state.layer != Layer.EMOJI) {
             val candidates = row().also { candidatesRow = it }

@@ -14,6 +14,9 @@ internal class KeyboardTouchRouter(
     private data class Target(val key: InstantKey, val downTime: Long)
     private val targets = mutableMapOf<Int, Target>()
     private var routing = false
+    private val bounds = Rect()
+    private val properties = arrayOf(MotionEvent.PointerProperties())
+    private val coordinates = arrayOf(MotionEvent.PointerCoords())
 
     fun dispatch(event: MotionEvent): Boolean? {
         val action = event.actionMasked
@@ -50,16 +53,15 @@ internal class KeyboardTouchRouter(
     }
 
     private fun send(event: MotionEvent, index: Int, action: Int, target: Target) {
-        val bounds = Rect()
+        bounds.setEmpty()
         root.offsetDescendantRectToMyCoords(target.key, bounds)
-        val properties = MotionEvent.PointerProperties()
-        val coords = MotionEvent.PointerCoords()
-        event.getPointerProperties(index, properties)
+        val coords = coordinates[0]
+        event.getPointerProperties(index, properties[0])
         event.getPointerCoords(index, coords)
         coords.x -= bounds.left
         coords.y -= bounds.top
         val single = MotionEvent.obtain(target.downTime, event.eventTime, action, 1,
-            arrayOf(properties), arrayOf(coords), event.metaState, event.buttonState,
+            properties, coordinates, event.metaState, event.buttonState,
             event.xPrecision, event.yPrecision, event.deviceId, event.edgeFlags, event.source, event.flags)
         try { target.key.dispatchTouchEvent(single) } finally { single.recycle() }
     }
