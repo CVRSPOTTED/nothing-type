@@ -81,7 +81,7 @@
     <string name="voice_help">Tap Voice to use the system speech service, which may need internet access. Voice input is hidden in password fields.</string>
     <string name="privacy_heading">Privacy</string>
     <string name="privacy_detail">Typing stays on the device. Clipboard text is read only when you tap Paste, which is hidden in password fields.</string>
-    <string name="footer">NOTHING TYPE  /  0.6.0\nIndependent Android keyboard project</string>
+    <string name="footer">NOTHING TYPE  /  0.6.1\nIndependent Android keyboard project</string>
     <string name="delete_character">Delete character</string>
     <string name="no_suggestion">No suggestion</string>
     <string name="cursor_left">Move cursor left</string>

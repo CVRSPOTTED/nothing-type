@@ -81,7 +81,7 @@
     <string name="voice_help">Нажмите «Голос» в клавиатуре. Распознавание выполняет системная служба; ей может потребоваться интернет. В паролях голосовой ввод скрыт.</string>
     <string name="privacy_heading">Личное остаётся личным</string>
     <string name="privacy_detail">Нет разрешения на интернет, аналитики и истории ввода. Буфер читается только по нажатию «Вставить»; в полях паролей эта кнопка скрыта.</string>
-    <string name="footer">NOTHING TYPE  /  0.6.0\nНезависимый проект Android</string>
+    <string name="footer">NOTHING TYPE  /  0.6.1\nНезависимый проект Android</string>
     <string name="delete_character">Удалить символ</string>
     <string name="no_suggestion">Нет предложения</string>
     <string name="cursor_left">Переместить курсор влево</string>

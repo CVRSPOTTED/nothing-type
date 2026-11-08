@@ -28,7 +28,7 @@ class EditorSmokeInstrumentation : Instrumentation() {
         val result = Bundle()
         var code = Activity.RESULT_CANCELED
         val packageName = targetContext.packageName
-        val ime = "$packageName/.KeyloomIme"
+        val ime = "$packageName/dev.nothingtype.ime.NothingTypeIme"
         var oldIme: String? = null
         var oldHardwareIme: String? = null
         var wasEnabled = true
@@ -109,7 +109,7 @@ class EditorSmokeInstrumentation : Instrumentation() {
             await("IME restarts in a text editor") { key("q", "Q", "й", "Й") != null }
             runTypingBenchmark(editorActivity.editor, result)
             val external = "${context.packageName}/${ExternalEditorActivity::class.java.name}"
-            check("Error" !in shell("am start -W -n $external"))
+            check("Error" !in shell("am start -W -f 0x10008000 -n $external"))
             externalStarted = true
             await("web editor in the test app") {
                 webEditor()?.let { node ->
@@ -176,6 +176,7 @@ class EditorSmokeInstrumentation : Instrumentation() {
             editor.context.getSystemService(InputMethodManager::class.java).restartInput(editor)
         }
         await("plain editor for typing benchmark") { key("q", "й") != null && key("w", "ц") != null }
+        waitForIdleSync()
         val labels = listOf(if (key("q") != null) "q" else "й", if (key("w") != null) "w" else "ц")
         val positions = labels.map { label -> Rect().also { checkNotNull(key(label)).getBoundsInScreen(it) } }
         fun inject(index: Int, sync: Boolean) {
@@ -190,7 +191,13 @@ class EditorSmokeInstrumentation : Instrumentation() {
         val expected = StringBuilder()
         val burstStart = SystemClock.elapsedRealtimeNanos()
         repeat(1000) { index -> expected.append(labels[index % 2]); inject(index % 2, false) }
-        await("1000 taps arrive in the original order") { read(editor) == expected.toString() }
+        try {
+            await("1000 taps arrive in the original order") { read(editor) == expected.toString() }
+        } catch (failure: IllegalStateException) {
+            val actual = read(editor)
+            val firstMismatch = (0 until minOf(actual.length, expected.length)).firstOrNull { actual[it] != expected[it] }
+            error("Burst mismatch: expected=${expected.length}, actual=${actual.length}, firstMismatch=$firstMismatch")
+        }
         result.putLong("burst_1000_ms", (SystemClock.elapsedRealtimeNanos() - burstStart) / 1_000_000)
         val timings = mutableListOf<Long>()
         repeat(50) { index ->

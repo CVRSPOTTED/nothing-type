@@ -32,9 +32,7 @@ APK появится в `app/build/outputs/apk/debug/app-debug.apk`.
 | `docs` | Проверки, аудит и выпуск |
 | `fastlane`, `fdroid` | Метаданные публикации |
 
-Идентификатор Android `dev.keyloom.keyboard` и старые системные точки входа
-сохранены для совместимости обновлений и ярлыков. Основной код находится
-в пакетах `dev.nothingtype`.
+Начиная с 0.6.1 идентификатор Android — `dev.nothingtype.keyboard`. Пакеты кода — `dev.nothingtype`. Android считает это отдельным приложением: старые настройки и выбор клавиатуры автоматически не переносятся.
 
 [Проверка на устройстве](TESTING.md) · [Подпись релиза](RELEASE.md) · [Аудит готовности](ANDROID_QUALITY_AUDIT.md)
 

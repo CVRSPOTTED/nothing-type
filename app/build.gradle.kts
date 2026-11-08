@@ -7,11 +7,11 @@ android {
     compileSdk = 36
     buildToolsVersion = "36.0.0"
     defaultConfig {
-        applicationId = "dev.keyloom.keyboard" // Preserve upgrades and existing Android data.
+        applicationId = "dev.nothingtype.keyboard"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.6.0"
+        versionCode = 10
+        versionName = "0.6.1"
         testApplicationId = "dev.nothingtype.testing"
         testInstrumentationRunner = "dev.nothingtype.testing.EditorSmokeInstrumentation"
     }

@@ -1,0 +1,1 @@
+New Android application ID: dev.nothingtype.keyboard. Enable and select the new keyboard in Android after installation. Previous app settings are not migrated.

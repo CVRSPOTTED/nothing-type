@@ -1,6 +1,6 @@
 # Подпись и выпуск
 
-Версия в разработке: 0.6.0, versionCode 9. JDK 17, Android SDK 36.
+Версия в разработке: 0.6.1, versionCode 10. JDK 17, Android SDK 36.
 
 ## Ключ владельца
 
@@ -38,7 +38,7 @@ debug-версии сбросит её настройки. Не переимен
 
 ## F-Droid
 
-Рецепт `fdroid/metadata/dev.keyloom.keyboard.yml` — черновик. Сборку рецепта
+Рецепт `fdroid/metadata/dev.nothingtype.keyboard.yml` — черновик. Сборку рецепта
 нужно отдельно выполнить в актуальной среде fdroidserver после публикации тега.
 Обычный F-Droid подписывает сборку своим ключом; это не подпись владельца.
 Заявка в каталог и её одобрение не выполняются автоматически этим проектом.
@@ -48,3 +48,5 @@ debug-версии сбросит её настройки. Не переимен
 Документация:
 - https://developer.android.com/studio/publish/app-signing
 - https://f-droid.org/docs/Submitting_to_F-Droid_Quick_Start_Guide/
+
+С версии 0.6.1 используется dev.nothingtype.keyboard. После установки включите и выберите новый IME в Android. Прежнее приложение можно удалить после проверки нового; его настройки не переносятся автоматически.
