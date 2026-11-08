@@ -12,7 +12,7 @@ import android.speech.SpeechRecognizer
 import android.view.inputmethod.InputConnection
 import android.widget.Toast
 import dev.nothingtype.R
-import dev.nothingtype.keyboard.Language
+
 
 /** A cancellable dictation session. Partial phrases are UI-only; only a final result reaches the editor. */
 internal class DictationController(
@@ -20,7 +20,7 @@ internal class DictationController(
     private val connection: () -> InputConnection?,
     private val shown: () -> Boolean,
     private val sensitive: () -> Boolean,
-    private val language: () -> Language,
+    private val language: () -> String,
     private val offlineOnly: () -> Boolean,
     private val finishWord: () -> Unit,
     private val status: (String) -> Unit,
@@ -135,7 +135,7 @@ internal class DictationController(
             speech.startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, if (language() == Language.RU) "ru-RU" else "en-US")
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, language())
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             })

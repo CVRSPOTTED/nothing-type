@@ -14,7 +14,7 @@ import org.robolectric.annotation.Config
 class ExpandedDictionaryTest {
     private val context = Robolectric.buildActivity(Activity::class.java).setup().get()
     @Test fun bundledDictionariesCompleteUncommonWordsAndPreserveManualTerms() {
-        val entries = Language.entries.associateWith { language ->
+        val entries = Language.entries.filter(Language::hasDictionary).associateWith { language ->
             context.assets.open("dictionaries/${language.name.lowercase()}.txt").bufferedReader().useLines { lines ->
                 lines.map { it.substringBefore(' ').removePrefix("\uFEFF") }.toList()
             }

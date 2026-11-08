@@ -9,6 +9,8 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import dev.nothingtype.ime.VoicePermissionActivity
+import dev.nothingtype.keyboard.KlcLayout
+import dev.nothingtype.keyboard.Language
 import dev.nothingtype.R
 import dev.nothingtype.settings.KeyboardFont
 import dev.nothingtype.settings.KeyboardFonts
@@ -309,6 +311,7 @@ class MainActivity : Activity() {
         toggle(getString(R.string.toolbar), prefs.toolbar) { prefs.toolbar = it }
         toggle(getString(R.string.instant_input), prefs.instantInput) { prefs.instantInput = it }
         page.addView(label(getString(R.string.input_help), 12f, muted))
+        button(page, getString(R.string.keyboard_languages)) { showKeyboardLanguages() }
         page.addView(label(getString(R.string.language_switch)))
         val languageChoices = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         val languageLabels = listOf(R.string.language_switch_hold, R.string.language_switch_button)
@@ -336,6 +339,61 @@ class MainActivity : Activity() {
         button(page, getString(R.string.configure_microphone)) { openExternalScreen(Intent(this, VoicePermissionActivity::class.java)) }
         toggle(getString(R.string.offline_voice_only), prefs.offlineVoiceOnly) { prefs.offlineVoiceOnly = it }
         page.addView(label(getString(R.string.voice_help), 12f, muted))
+    }
+
+    private fun showKeyboardLanguages() {
+        val languages = Language.entries.filter { prefs.layoutTitle(it).isNotEmpty() }
+        val chosen = languages.map { it in prefs.enabledLanguages }.toBooleanArray()
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.keyboard_languages)
+            .setMultiChoiceItems(languages.map(prefs::layoutTitle).toTypedArray(), chosen) { _, index, checked ->
+                chosen[index] = checked
+            }
+            .setPositiveButton(R.string.save, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setNeutralButton(R.string.manage_layout_import) { _, _ -> showLayoutImport() }
+            .show().apply {
+                getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val enabled = languages.filterIndexed { index, _ -> chosen[index] }
+                    if (enabled.isEmpty()) {
+                        Toast.makeText(this@MainActivity, R.string.keep_one_language, Toast.LENGTH_SHORT).show()
+                    } else {
+                        prefs.enabledLanguages = enabled
+                        dismiss()
+                    }
+                }
+            }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun showLayoutImport() {
+        val imported = prefs.layoutTitle(Language.CUSTOM)
+        val dialog = android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.manage_layout_import)
+            .setMessage(getString(R.string.layout_import_help) +
+                if (imported.isEmpty()) "" else "\n\n" + getString(R.string.imported_layout_name, imported))
+            .setPositiveButton(R.string.choose_layout_file) { _, _ ->
+                val picker = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                }
+                startActivityForResult(picker, IMPORT_KLC)
+            }
+            .setNeutralButton(R.string.open_layout_catalog) { _, _ ->
+                val site = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://kbdlayout.info/"))
+                try {
+                    openExternalScreen(site)
+                } catch (_: android.content.ActivityNotFoundException) {
+                    Toast.makeText(this, R.string.open_layout_catalog_error, Toast.LENGTH_LONG).show()
+                }
+            }
+        if (imported.isNotEmpty()) {
+            dialog.setNegativeButton(R.string.remove_imported_layout) { _, _ ->
+                prefs.removeImportedLayout()
+                showKeyboardLanguages()
+            }
+        }
+        dialog.show()
     }
 
     private fun showInputTest() {
@@ -428,11 +486,28 @@ class MainActivity : Activity() {
 
     private companion object {
         const val IMPORT_NDOT = 22
+        const val IMPORT_KLC = 23
     }
 
     @Deprecated("Uses framework Activity result dispatch")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == IMPORT_KLC && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            val app = applicationContext
+            Thread {
+                val result = runCatching {
+                    val input = requireNotNull(app.contentResolver.openInputStream(uri))
+                    input.use(KlcLayout::read).also { Preferences(app).importLayout(it) }
+                }
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    if (result.isSuccess) showKeyboardLanguages()
+                    else Toast.makeText(this, R.string.layout_import_error, Toast.LENGTH_LONG).show()
+                }
+            }.start()
+            return
+        }
         if (requestCode == IMPORT_NDOT && resultCode == RESULT_OK) {
             val uri = data?.data ?: return
             importingFont = true

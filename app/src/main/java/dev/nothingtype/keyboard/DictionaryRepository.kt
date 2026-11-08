@@ -19,12 +19,12 @@ internal object DictionaryRepository {
         worker.execute {
             val engine = runCatching {
                 cached?.takeIf { it.first == snapshot }?.second ?: run {
-                    val words = assets ?: Language.entries.associateWith { language ->
+                    val words = assets ?: Language.entries.filter(Language::hasDictionary).associateWith { language ->
                         app.assets.open("dictionaries/${language.name.lowercase()}.txt").bufferedReader().useLines { lines ->
                             lines.map { it.substringBefore(' ').removePrefix("\uFEFF") }.filter { it.isNotBlank() }.toList()
                         }
                     }.also { assets = it }
-                    val own = Language.entries.associateWith { language ->
+                    val own = Language.entries.filter(Language::hasDictionary).associateWith { language ->
                         snapshot.filter { word -> if (language == Language.RU) word.all { it in 'а'..'я' || it == 'ё' } else word.all { it in 'a'..'z' } }.sorted()
                     }
                     Suggestions(words, own).also { cached = snapshot to it }

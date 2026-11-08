@@ -90,8 +90,6 @@
     <string name="paste">Вставить</string>
     <string name="settings">Настройки</string>
     <string name="shift_help">Shift; удерживайте для Caps Lock</string>
-    <string name="space_en_help">Пробел. Удерживайте для смены языка или проведите для перемещения курсора.</string>
-    <string name="space_ru_help">Пробел; удерживайте для смены языка</string>
     <string name="suggestion_label">Дополнить: %1$s</string>
     <string name="voice_status">Голосовой ввод: %1$s</string>
     <string name="enter_label">Ввод: %1$s</string>
@@ -123,4 +121,16 @@
     <string name="offline_voice_only">Голосовой ввод только без сети</string>
     <string name="voice_local_missing">Локальное распознавание недоступно. Установите службу и языковую модель или выключите режим без сети.</string>
     <string name="open_android_settings">Открыть настройки Android</string>
+    <string name="keyboard_languages">Языки клавиатуры</string>
+    <string name="keep_one_language">Оставьте хотя бы один язык клавиатуры.</string>
+    <string name="manage_layout_import">Импорт раскладки</string>
+    <string name="layout_import_help">Скачайте файл KLC с kbdlayout.info и откройте его здесь. Можно хранить одну импортированную раскладку. Новый файл заменит предыдущий.</string>
+    <string name="open_layout_catalog">Открыть каталог</string>
+    <string name="open_layout_catalog_error">Откройте kbdlayout.info в браузере.</string>
+    <string name="choose_layout_file">Выбрать файл KLC</string>
+    <string name="imported_layout_name">Импортированная раскладка: %1$s</string>
+    <string name="remove_imported_layout">Удалить раскладку</string>
+    <string name="layout_import_error">Не удалось прочитать раскладку. Выберите поддерживаемый файл KLC с kbdlayout.info.</string>
+    <string name="space_language_help">Пробел, %1$s. Удерживайте для выбора языка или проведите для перемещения курсора.</string>
+    <string name="save">Сохранить</string>
 </resources>

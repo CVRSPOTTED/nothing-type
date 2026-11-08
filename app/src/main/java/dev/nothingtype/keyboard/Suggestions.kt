@@ -53,7 +53,7 @@ class Suggestions(
     private fun nearby(input: String, language: Language): List<String> {
         if (input.length !in 4..48 || !input.all(Char::isLetter)) return emptyList()
         val lower = input.lowercase(Locale.ROOT)
-        val knownWords = known.getValue(language)
+        val knownWords = known[language] ?: return emptyList()
         if (lower in knownWords) return emptyList()
         val lookup = deletions.getValue(language)
         val possibilities = linkedSetOf<String>()
@@ -91,7 +91,7 @@ class Suggestions(
         if (prefix.isEmpty() || prefix.length > 48 || !prefix.all(Char::isLetter)) return emptyList()
         val lower = prefix.lowercase(Locale.ROOT)
         if (lower.length <= 3) return index[language]?.get(lower).orEmpty().map { matchCase(prefix, it) }
-        val entries = sorted.getValue(language)
+        val entries = sorted[language] ?: return emptyList()
         var left = 0
         var right = entries.size
         while (left < right) {

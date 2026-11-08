@@ -90,8 +90,6 @@
     <string name="paste">Paste</string>
     <string name="settings">Settings</string>
     <string name="shift_help">Shift. Hold for Caps Lock.</string>
-    <string name="space_en_help">Space. Hold to switch languages or slide to move the cursor.</string>
-    <string name="space_ru_help">Space. Hold to switch languages or slide to move the cursor.</string>
     <string name="suggestion_label">Complete: %1$s</string>
     <string name="voice_status">Voice input: %1$s</string>
     <string name="enter_label">Enter: %1$s</string>
@@ -123,4 +121,16 @@
     <string name="offline_voice_only">Offline voice input only</string>
     <string name="voice_local_missing">Offline speech recognition is unavailable. Install an offline speech service and language model, or disable offline-only mode.</string>
     <string name="open_android_settings">Open Android settings</string>
+    <string name="keyboard_languages">Keyboard languages</string>
+    <string name="keep_one_language">Keep at least one keyboard language enabled.</string>
+    <string name="manage_layout_import">Import a layout</string>
+    <string name="layout_import_help">Download a KLC file from kbdlayout.info and open it here. You can keep one imported layout. Importing another file replaces it.</string>
+    <string name="open_layout_catalog">Open catalog</string>
+    <string name="open_layout_catalog_error">Open kbdlayout.info in your browser.</string>
+    <string name="choose_layout_file">Choose KLC file</string>
+    <string name="imported_layout_name">Imported layout: %1$s</string>
+    <string name="remove_imported_layout">Remove layout</string>
+    <string name="layout_import_error">Could not read the layout. Choose a supported KLC file from kbdlayout.info.</string>
+    <string name="space_language_help">Space, %1$s. Hold to choose a language or slide to move the cursor.</string>
+    <string name="save">Save</string>
 </resources>

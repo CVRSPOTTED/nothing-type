@@ -49,7 +49,7 @@ open class NothingTypeIme : InputMethodService() {
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val dictation by lazy {
         DictationController(this, { currentInputConnection }, { isInputViewShown }, { privateField || rawInput },
-            { state.language }, { prefs.offlineVoiceOnly }, ::finishWord,
+            { state.languageTag }, { prefs.offlineVoiceOnly }, ::finishWord,
             { keyboard?.updateVoice(it) }, { keyboard?.updateVoiceLevel(it) }, { keyboard?.updateVoicePreview(it) })
     }
 
@@ -129,12 +129,16 @@ open class NothingTypeIme : InputMethodService() {
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype?) {
         super.onCurrentInputMethodSubtypeChanged(newSubtype)
         stopVoice(); finishWord()
-        prefs.language = if (newSubtype?.languageTag?.startsWith("ru") == true) Language.RU else Language.EN
+        val tag = newSubtype?.languageTag?.substringBefore('-')
+        val selected = prefs.enabledLanguages.firstOrNull { it.tag.substringBefore('-') == tag }
+        if (selected != null) prefs.language = selected
         state.language = prefs.language
         if (isInputViewShown) setInputView(panel())
     }
 
     private fun panel(): View {
+        state.importedLayout = if (state.language == Language.CUSTOM) prefs.loadImportedLayout() else null
+        if (state.language == Language.CUSTOM && state.importedLayout == null) state.language = Language.EN
         val keys = KeyboardPanel(this, prefs, state, commit = ::typeText, command = ::command,
             sensitive = privateField || rawInput, enterLabel = actionLabel, chooseSuggestion = ::acceptSuggestion)
         keyboard = keys
@@ -143,7 +147,7 @@ open class NothingTypeIme : InputMethodService() {
     }
 
     private fun updateSuggestions() {
-        keyboard?.updateSuggestions(if (allowSuggestions && prefs.suggestions) dictionary.candidates(composing.toString(), state.language) else emptyList())
+        keyboard?.updateSuggestions(if (state.language.hasDictionary && allowSuggestions && prefs.suggestions) dictionary.candidates(composing.toString(), state.language) else emptyList())
     }
     private fun finishWord() {
         undoCorrection = null
@@ -205,7 +209,7 @@ open class NothingTypeIme : InputMethodService() {
             }
             return
         }
-        if (compositionSupported && allowSuggestions && (prefs.suggestions || (prefs.autocorrect && allowAutocorrect)) &&
+        if (state.language.hasDictionary && compositionSupported && allowSuggestions && (prefs.suggestions || (prefs.autocorrect && allowAutocorrect)) &&
             text.all(Char::isLetter) && composing.length < 48) {
             keepOriginal = false
             composing.append(text)
@@ -366,7 +370,7 @@ open class NothingTypeIme : InputMethodService() {
             }
             Command.SETTINGS -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             Command.VOICE -> toggleVoice()
-            Command.LANGUAGE -> updateSuggestions()
+            Command.LANGUAGE -> { stopVoice(); finishWord() }
         }
     }
 }

@@ -3,6 +3,10 @@ package dev.nothingtype.settings
 import android.content.Context
 import android.graphics.Color
 import dev.nothingtype.keyboard.Language
+import dev.nothingtype.keyboard.ImportedLayout
+import dev.nothingtype.keyboard.LayoutKey
+import org.json.JSONArray
+import org.json.JSONObject
 
 enum class Palette(val title: String, val canvas: Int, val key: Int, val ink: Int, val accent: Int) {
     DARK("Dark", Color.BLACK, Color.rgb(32, 32, 32), Color.rgb(242, 242, 242), Color.WHITE),
@@ -39,9 +43,69 @@ class Preferences(context: Context) {
         get() = KeyboardFont.entries.firstOrNull { it.name == data.getString("font_family", null) }
             ?: KeyboardFont.ROBOTO
         set(value) { data.edit().putString("font_family", value.name).apply() }
+    var enabledLanguages: List<Language>
+        get() {
+            val names = data.getStringSet("enabled_languages", setOf("EN", "RU")).orEmpty()
+            return Language.entries.filter {
+                it.name in names && (it != Language.CUSTOM || data.contains("imported_layout"))
+            }.ifEmpty { listOf(Language.EN) }
+        }
+        set(value) {
+            require(value.isNotEmpty())
+            val editor = data.edit().putStringSet("enabled_languages", value.map { it.name }.toSet())
+            if (language !in value) editor.putString("language", value.first().name)
+            editor.apply()
+        }
+
     var language: Language
-        get() = if (data.getString("language", "EN") == "RU") Language.RU else Language.EN
+        get() {
+            val name = data.getString("language", "EN")
+            val enabled = enabledLanguages
+            return enabled.firstOrNull { it.name == name } ?: enabled.first()
+        }
         set(value) { data.edit().putString("language", value.name).apply() }
+
+    internal fun layoutTitle(language: Language): String =
+        if (language == Language.CUSTOM) data.getString("imported_layout_title", "").orEmpty() else language.title
+
+    internal fun loadImportedLayout(): ImportedLayout? {
+        val source = data.getString("imported_layout", null) ?: return null
+        return runCatching {
+            val json = JSONObject(source)
+            val rows = json.getJSONArray("rows")
+            ImportedLayout(layoutTitle(Language.CUSTOM), json.getString("tag"), List(rows.length()) { rowIndex ->
+                val row = rows.getJSONArray(rowIndex)
+                List(row.length()) { columnIndex ->
+                    val key = row.getJSONArray(columnIndex)
+                    LayoutKey(key.getString(0), key.getString(1), (2 until key.length()).map(key::getString))
+                }
+            })
+        }.getOrNull()
+    }
+
+    internal fun importLayout(layout: ImportedLayout) {
+        val rows = JSONArray()
+        layout.rows.forEach { row ->
+            val keys = JSONArray()
+            row.forEach { key ->
+                keys.put(JSONArray(listOf(key.base, key.shifted) + key.alternatives))
+            }
+            rows.put(keys)
+        }
+        data.edit()
+            .putString("imported_layout", JSONObject().put("tag", layout.tag).put("rows", rows).toString())
+            .putString("imported_layout_title", layout.title)
+            .putStringSet("enabled_languages", (enabledLanguages + Language.CUSTOM).map { it.name }.toSet())
+            .apply()
+    }
+
+    internal fun removeImportedLayout() {
+        val remaining = (enabledLanguages - Language.CUSTOM).ifEmpty { listOf(Language.EN) }
+        val next = language.takeIf { it in remaining } ?: remaining.first()
+        data.edit().remove("imported_layout").remove("imported_layout_title")
+            .putStringSet("enabled_languages", remaining.map { it.name }.toSet())
+            .putString("language", next.name).apply()
+    }
     var languageSwitch: LanguageSwitch
         get() = LanguageSwitch.entries.firstOrNull { it.name == data.getString("language_switch", null) }
             ?: LanguageSwitch.SPACE_HOLD

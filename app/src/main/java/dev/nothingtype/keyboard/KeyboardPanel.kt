@@ -160,36 +160,47 @@ class KeyboardPanel(
 
     private fun showLanguages(anchor: android.view.View) {
         android.widget.PopupMenu(context, anchor).apply {
-            menu.add(0, 1, 0, "English").isChecked = state.language == Language.EN
-            menu.add(0, 2, 1, "Русский").isChecked = state.language == Language.RU
-            menu.setGroupCheckable(0, true, true)
-            setOnMenuItemClickListener {
-                changeLanguage(if (it.itemId == 1) Language.EN else Language.RU)
-                true
+            prefs.enabledLanguages.forEachIndexed { index, language ->
+                menu.add(0, index + 1, index, prefs.layoutTitle(language)).apply {
+                    isCheckable = true
+                    isChecked = state.language == language
+                    setOnMenuItemClickListener { changeLanguage(language); true }
+                }
             }
+            menu.setGroupCheckable(0, true, true)
             show()
         }
     }
 
     private fun changeLanguage(language: Language) {
+        if (state.language == language) return
+        command(Command.LANGUAGE)
         state.language = language
+        state.importedLayout = if (language == Language.CUSTOM) prefs.loadImportedLayout() else null
+        state.updateAutomaticShift(state.shift)
         prefs.language = language
         render()
-        command(Command.LANGUAGE)
     }
 
     private fun alternateSymbols(char: String): List<String> {
         if (state.layer != Layer.LETTERS) return emptyList()
-        return when (char.lowercase()) {
+        return when (char.lowercase(state.language.locale)) {
             "e" -> listOf("é", "è", "ê", "ë")
             "a" -> listOf("á", "à", "â", "ä", "æ")
             "i" -> listOf("í", "ì", "î", "ï")
-            "o" -> listOf("ó", "ò", "ô", "ö", "ø")
+            "o" -> listOf("ó", "ò", "ô", "ö", "ø", "œ")
             "u" -> listOf("ú", "ù", "û", "ü")
             "n" -> listOf("ñ")
             "c" -> listOf("ç")
             "е" -> listOf("ё")
             "ь" -> listOf("ъ")
+            "क", "ख" -> listOf("क्ष", "क़")
+            "त", "थ" -> listOf("त्र")
+            "ज", "झ" -> listOf("ज्ञ", "ज़")
+            "श", "स" -> listOf("श्र")
+            "र", "ऋ" -> listOf("ृ", "ॄ", "ऱ")
+            "ड", "ढ" -> listOf("ड़", "ढ़")
+            "प", "फ" -> listOf("फ़")
             else -> emptyList()
         }
     }
@@ -198,7 +209,9 @@ class KeyboardPanel(
         if (values.isEmpty()) return
         button.setOnLongClickListener {
             android.widget.PopupMenu(context, button).apply {
-                values.forEach { value -> menu.add(if (button.text.first().isUpperCase()) value.uppercase() else value) }
+                                values.forEach { value ->
+                    menu.add(if (state.language != Language.CUSTOM && state.shift) state.upper(value) else value)
+                }
                 setOnMenuItemClickListener {
                     state.afterCommit()
                     commit(it.title.toString())
@@ -358,7 +371,9 @@ class KeyboardPanel(
             }
             updateSuggestions(cachedCandidates)
         }
-        if (prefs.numbers && state.layer == Layer.LETTERS) {
+        val rows = state.rows()
+        val hasImportedNumberRow = state.language == Language.CUSTOM && state.importedLayout?.rows?.size == 4
+        if (prefs.numbers && state.layer == Layer.LETTERS && !hasImportedNumberRow) {
             val numbers = row(typing = true)
             "1234567890".forEach { char -> key(numbers, char.toString(), immediate = true) { commit(char.toString()) } }
         }
@@ -368,9 +383,9 @@ class KeyboardPanel(
             val rowHeight = context.dp(height) + 2 * context.dp(3)
             addView(emojiPicker(context, prefs.palette, rowHeight * (if (prefs.numbers) 4 else 3), commit))
         }
-        state.rows().forEachIndexed { index, chars ->
+        rows.forEachIndexed { index, chars ->
             val line = row(typing = true)
-            if (index == 2 && state.layer == Layer.LETTERS) {
+            if (index == rows.lastIndex && state.layer == Layer.LETTERS) {
                 shiftButton = key(line, "↑", 1.3f, typing = true) {
                     state.toggleShift(); updateCase()
                 }.apply {
@@ -388,9 +403,10 @@ class KeyboardPanel(
                     render()
                 }.apply { highlight(this) }
             }
-            chars.forEach { char ->
+            chars.forEachIndexed { column, char ->
                 lateinit var button: InstantKey
-                val extras = alternateSymbols(char)
+                val extras = if (state.layer == Layer.LETTERS && state.language == Language.CUSTOM)
+                    state.importedAlternatives(index, column) else alternateSymbols(char)
                 button = key(line, char, immediate = extras.isEmpty(), typing = true) {
                     val value = button.text.toString()
                     state.afterCommit()
@@ -413,24 +429,26 @@ class KeyboardPanel(
             state.layer = if (state.layer == Layer.LETTERS) Layer.SYMBOLS else Layer.LETTERS; render()
         }
         addAlternatives(key(bottom, ",", typing = true) { commit(",") }, listOf(";", ":", "«", "»"))
-        val languageButton = prefs.languageSwitch == LanguageSwitch.BUTTON
+        val enabled = prefs.enabledLanguages
+        val canSwitch = enabled.size > 1
+        val languageButton = canSwitch && prefs.languageSwitch == LanguageSwitch.BUTTON
         if (languageButton) {
-            val next = if (state.language == Language.EN) Language.RU else Language.EN
-            key(bottom, state.language.name, 0.9f,
-                description = context.getString(R.string.switch_to_language, if (next == Language.RU) "Русский" else "English"),
+            val next = enabled[(enabled.indexOf(state.language) + 1) % enabled.size]
+            val abbreviation = if (state.language == Language.CUSTOM) state.languageTag.substringBefore('-').uppercase()
+                else state.language.name
+            key(bottom, abbreviation, 0.9f,
+                description = context.getString(R.string.switch_to_language, prefs.layoutTitle(next)),
                 immediate = true) { changeLanguage(next) }
         }
-        val spaceDescription = when {
-            languageButton -> R.string.space_button_help
-            state.language == Language.EN -> R.string.space_en_help
-            else -> R.string.space_ru_help
-        }
-        val space = key(bottom, if (state.language == Language.EN) "space" else "пробел",
+        val spaceDescription = if (canSwitch && !languageButton)
+            context.getString(R.string.space_language_help, state.layoutTitle)
+            else context.getString(R.string.space_button_help)
+        val space = key(bottom, state.language.space,
             if (languageButton) 2.7f else 3.6f,
-            description = context.getString(spaceDescription), typing = true) { commit(" ") }
+            description = spaceDescription, typing = true) { commit(" ") }
         space.spaceLegend = true
         space.moveCursor = { command(if (it < 0) Command.LEFT else Command.RIGHT) }
-        if (!languageButton) space.setOnLongClickListener { showLanguages(space); true }
+        if (canSwitch && !languageButton) space.setOnLongClickListener { showLanguages(space); true }
         space.accessibilityDelegate = object : android.view.View.AccessibilityDelegate() {
             override fun onInitializeAccessibilityNodeInfo(
                 host: android.view.View,
@@ -455,7 +473,7 @@ class KeyboardPanel(
         addAlternatives(key(bottom, ".", typing = true) { commit(".") }, listOf("…", "!", "?", "—", "/"))
         if (state.layer == Layer.EMOJI) addDeleteKey(bottom)
         key(bottom, enterLabel, 1.3f, true, context.getString(R.string.enter_label, enterLabel), typing = true) { command(Command.ENTER) }
-        if (state.layer in listOf(Layer.SYMBOLS, Layer.SYMBOLS_MORE) && prefs.numbers) {
+        if (state.layer in listOf(Layer.SYMBOLS, Layer.SYMBOLS_MORE) && (prefs.numbers || hasImportedNumberRow)) {
             // Distribute the missing letter-mode number row, including its margins, in pixels.
             // Keep the toolbar and navigation area at their original sizes.
             val layout = bottom.getChildAt(0).layoutParams as LayoutParams

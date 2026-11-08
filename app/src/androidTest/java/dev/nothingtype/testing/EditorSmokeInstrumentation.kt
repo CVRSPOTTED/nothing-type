@@ -59,7 +59,7 @@ class EditorSmokeInstrumentation : Instrumentation() {
             val initial = read(editorActivity.editor)
             val english = initial == "Q"
             val letter = if (english) "e" else "е"
-            val space = targetContext.getString(if (english) R.string.space_en_help else R.string.space_ru_help)
+            val space = targetContext.getString(R.string.space_language_help, if (english) "English" else "Русский")
             val next = initial.lowercase()
             await("keys for rapid typing") { key(letter) != null && key(next) != null && key(space) != null }
             tapSequence(letter, letter, space, next, ".", space, next)
