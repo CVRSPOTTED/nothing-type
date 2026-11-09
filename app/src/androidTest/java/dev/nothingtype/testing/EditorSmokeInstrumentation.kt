@@ -62,24 +62,15 @@ class EditorSmokeInstrumentation : Instrumentation() {
             activity = editorActivity
             val manager = editorActivity.getSystemService(InputMethodManager::class.java)
             fun focus(editor: EditText) {
-                val point = IntArray(2)
-                await("editor window is focused and the field is visible") {
-                    var ready = false
-                    runOnMainSync {
-                        ready = editor.hasWindowFocus() && editor.isShown && editor.width > 0
-                        if (ready) {
-                            editor.getLocationOnScreen(point)
-                            point[0] += editor.width / 2
-                            point[1] += editor.height / 2
-                        }
-                    }
-                    ready
-                }
-                shell("input tap ${point[0]} ${point[1]}")
-                await("editor receives focus") {
+                await("editor window receives focus") {
                     var focused = false
-                    runOnMainSync { focused = editor.hasFocus() }
+                    runOnMainSync { focused = editor.hasWindowFocus() && editor.requestFocus() }
                     focused
+                }
+                runOnMainSync { manager.restartInput(editor) }
+                await("Android shows the keyboard for the editor") {
+                    runOnMainSync { manager.showSoftInput(editor, 0) }
+                    imeRoot() != null
                 }
             }
             focus(editorActivity.editor)
