@@ -61,9 +61,26 @@ class EditorSmokeInstrumentation : Instrumentation() {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as EditorFixtureActivity
             activity = editorActivity
             val manager = editorActivity.getSystemService(InputMethodManager::class.java)
-            fun focus(editor: EditText) = runOnMainSync {
-                editor.requestFocus()
-                manager.showSoftInput(editor, InputMethodManager.SHOW_IMPLICIT)
+            fun focus(editor: EditText) {
+                val point = IntArray(2)
+                await("editor window is focused and the field is visible") {
+                    var ready = false
+                    runOnMainSync {
+                        ready = editor.hasWindowFocus() && editor.isShown && editor.width > 0
+                        if (ready) {
+                            editor.getLocationOnScreen(point)
+                            point[0] += editor.width / 2
+                            point[1] += editor.height / 2
+                        }
+                    }
+                    ready
+                }
+                shell("input tap ${point[0]} ${point[1]}")
+                await("editor receives focus") {
+                    var focused = false
+                    runOnMainSync { focused = editor.hasFocus() }
+                    focused
+                }
             }
             focus(editorActivity.editor)
             await("capital letter in sentence field") { key("Q", "Й")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true }
