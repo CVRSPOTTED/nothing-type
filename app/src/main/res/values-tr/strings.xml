@@ -72,10 +72,9 @@
     <string name="autocorrect">T9 · Otomatik düzeltme</string>
     <string name="autocorrect_help">Boşlukta veya noktalama işaretinde belirgin tek harf hatalarını düzeltir. Silme tuşu kelimenizi geri getirir. Hassas alanlarda, e-posta adreslerinde ve URL’lerde kapalıdır.</string>
     <string name="suggestions_help">Yazmaya başlayın ve tuşların üstünden bir öneri seçin. Öneriler sekiz yerleşik düzende de çevrimdışı çalışır.</string>
-    <string name="feedback_heading">Ses ve geri bildirim</string>
-    <string name="feedback_detail">Sistemin ses ve titreşim ayarlarını izler.</string>
+    <string name="feedback_heading">Titreşim ve sesle yazma</string>
+    <string name="feedback_detail">Sistemin titreşim ayarlarını izler.</string>
     <string name="haptic_feedback">Dokunsal geri bildirim</string>
-    <string name="key_sound">Tuş sesleri</string>
     <string name="configure_microphone">Mikrofon erişimini ayarla</string>
     <string name="voice_help">Sesle yazma, internet gerektirebilen sistem konuşma hizmetini kullanır. Şifre alanlarında gizlidir.</string>
     <string name="privacy_heading">Gizlilik</string>

@@ -72,10 +72,9 @@
     <string name="autocorrect">T9 · التصحيح التلقائي</string>
     <string name="autocorrect_help">يصحح أخطاء الحرف الواحد الواضحة عند إدخال مسافة أو علامة ترقيم. يعيد مفتاح الحذف كلمتك. يتوقف في الحقول الحساسة وعناوين البريد والروابط.</string>
     <string name="suggestions_help">ابدأ الكتابة واختر اقتراحًا فوق المفاتيح. تعمل الاقتراحات دون اتصال في التخطيطات الثمانية المدمجة.</string>
-    <string name="feedback_heading">الصوت والاستجابة</string>
-    <string name="feedback_detail">يتبع إعدادات الصوت والاهتزاز في النظام.</string>
+    <string name="feedback_heading">الاهتزاز والإدخال الصوتي</string>
+    <string name="feedback_detail">يتبع إعدادات الاهتزاز في النظام.</string>
     <string name="haptic_feedback">استجابة لمسية</string>
-    <string name="key_sound">أصوات المفاتيح</string>
     <string name="configure_microphone">إعداد الوصول إلى الميكروفون</string>
     <string name="voice_help">يستخدم الإملاء خدمة التعرف على الكلام في النظام، وقد تحتاج إلى الإنترنت. لا يظهر في حقول كلمات المرور.</string>
     <string name="privacy_heading">الخصوصية</string>

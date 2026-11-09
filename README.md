@@ -3,31 +3,28 @@
 English · [Русский](README.ru.md)
 
 [![Android build](https://github.com/CVRSPOTTED/nothing-type/actions/workflows/android.yml/badge.svg)](https://github.com/CVRSPOTTED/nothing-type/actions/workflows/android.yml)
-[![Android 8+](https://img.shields.io/badge/Android-8%2B-3DDC84)](app/build.gradle.kts)
-[![MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
-An independent Android keyboard inspired by Nothing OS.
+An independent Android keyboard inspired by Nothing OS. It runs on Android 8.0 and later.
 
-[GitHub releases](https://github.com/CVRSPOTTED/nothing-type/releases)
+[Download from GitHub Releases](https://github.com/CVRSPOTTED/nothing-type/releases)
 
 ## Features
 
-- English, Russian, French, German, Hindi, Arabic, Turkish and Spanish. Choose the app language and typing layouts separately.
-- Offline suggestions and autocorrect in all eight built-in layouts, with 10,000 dictionary entries per language. Add your own words and use Backspace to undo a correction.
-- Switch layouts by holding Space or tapping a dedicated key. Import a custom KLC layout for typing.
-- Dark and light keyboard themes, an optional red Enter key, fonts, key sizing and placement.
-- Emoji, cursor control on Space and optional dictation through Android’s speech service.
+- **Eight languages** for the app and keyboard. English, Russian, French, German, Hindi, Arabic, Turkish and Spanish.
+- **Offline typing help.** Each built-in layout has 10,000 dictionary entries, word suggestions, autocorrect and your own words. Backspace can undo a correction.
+- **Layout controls.** Hold Space or use a dedicated key to switch languages. Import a KLC file for a custom typing layout.
+- **Editing and input.** Move the cursor with Space, hold keys for extra characters, use 3,781 emoji or dictate through Android’s speech service.
+- **Appearance and placement.** Choose a dark or light keyboard, an optional red Enter key, Roboto or Geist, or import Ndot. Adjust key size, spacing, corner radius and position.
+- **Feedback.** Optional vibration and a keyboard glow that responds to dictation.
 
 ## Setup
 
-Requires Android 8.0 or later. Install the APK, open Nothing Type, then enable and select it in Android. Use **Settings** to choose languages and change typing behavior. Use **Style** for appearance.
+Install the APK, open Nothing Type, and enable and select the keyboard in Android. Use **Settings** for languages and typing, and **Style** for appearance. **Try typing** opens a test field.
 
-Suggestions run on the device. The keyboard keeps no history of what you type. Dictation depends on the installed speech service and may need internet access. [Privacy policy](PRIVACY.md)
+Suggestions run on your device. Nothing Type keeps no typing history. Dictation may need internet access, depending on the Android speech service. [Privacy policy](PRIVACY.md)
 
-## Development
+## Build and release
 
-Use JDK 17 and Android SDK 36. Run the Gradle wrapper with testDebugUnitTest, :swipe-research:test, lintDebug and assembleDebug.
+[Build instructions](docs/BUILD.md) · [Signing](docs/RELEASE.md) · [Validation](docs/VALIDATION_0.7.0.md) · [Changelog](CHANGELOG.md) · [Licenses](THIRD_PARTY.md)
 
-[Build](docs/BUILD.md) · [Release and signing](docs/RELEASE.md) · [Validation](docs/VALIDATION_0.7.0.md) · [Changelog](CHANGELOG.md) · [Third-party licenses](THIRD_PARTY.md)
-
-The app code is [MIT](LICENSE). Bundled word lists are [CC BY-SA 4.0](app/src/main/assets/dictionaries/SOURCE.md).
+The app code is [MIT](LICENSE). The word lists are [CC BY-SA 4.0](app/src/main/assets/dictionaries/SOURCE.md).

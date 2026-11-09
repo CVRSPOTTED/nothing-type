@@ -72,10 +72,9 @@
     <string name="autocorrect">T9 · Autocorrect</string>
     <string name="autocorrect_help">Corrects clear one-letter typos when you type a space or punctuation. Backspace restores your word. Disabled in sensitive fields, email addresses and URLs.</string>
     <string name="suggestions_help">Type a word and choose a completion above the keys. Suggestions work offline in all eight built-in layouts.</string>
-    <string name="feedback_heading">Sound and feedback</string>
-    <string name="feedback_detail">Follows system sound and vibration settings.</string>
+    <string name="feedback_heading">Vibration and voice input</string>
+    <string name="feedback_detail">Follows the system vibration setting.</string>
     <string name="haptic_feedback">Haptic feedback</string>
-    <string name="key_sound">Key sounds</string>
     <string name="configure_microphone">Set up microphone access</string>
     <string name="voice_help">Tap Voice to use the system speech service, which may need internet access. Voice input is hidden in password fields.</string>
     <string name="privacy_heading">Privacy</string>

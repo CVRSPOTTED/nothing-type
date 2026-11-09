@@ -72,10 +72,9 @@
     <string name="autocorrect">T9 · Correction automatique</string>
     <string name="autocorrect_help">Corrige les fautes évidentes d’une lettre après un espace ou un signe de ponctuation. La touche Effacer restaure votre mot. Désactivé dans les champs sensibles, les e-mails et les URL.</string>
     <string name="suggestions_help">Commencez à écrire et choisissez un mot au-dessus des touches. Les suggestions fonctionnent hors ligne dans les huit dispositions intégrées.</string>
-    <string name="feedback_heading">Son et retour tactile</string>
-    <string name="feedback_detail">Suit les réglages de son et de vibration du système.</string>
+    <string name="feedback_heading">Vibration et saisie vocale</string>
+    <string name="feedback_detail">Suit les réglages de vibration du système.</string>
     <string name="haptic_feedback">Retour haptique</string>
-    <string name="key_sound">Son des touches</string>
     <string name="configure_microphone">Configurer le micro</string>
     <string name="voice_help">La dictée utilise le service vocal du système, qui peut nécessiter Internet. Elle est masquée dans les champs de mot de passe.</string>
     <string name="privacy_heading">Confidentialité</string>

@@ -72,10 +72,9 @@
     <string name="autocorrect">T9 · Autokorrektur</string>
     <string name="autocorrect_help">Korrigiert eindeutige Einbuchstabenfehler bei einem Leerzeichen oder Satzzeichen. Die Löschtaste stellt dein Wort wieder her. In sensiblen Feldern, E-Mail-Adressen und URLs deaktiviert.</string>
     <string name="suggestions_help">Tippe ein Wort und wähle einen Vorschlag über den Tasten. Vorschläge funktionieren in allen acht integrierten Layouts offline.</string>
-    <string name="feedback_heading">Ton und Feedback</string>
-    <string name="feedback_detail">Berücksichtigt die Ton- und Vibrationseinstellungen des Systems.</string>
+    <string name="feedback_heading">Vibration und Spracheingabe</string>
+    <string name="feedback_detail">Berücksichtigt die Vibrationseinstellungen des Systems.</string>
     <string name="haptic_feedback">Haptisches Feedback</string>
-    <string name="key_sound">Tastentöne</string>
     <string name="configure_microphone">Mikrofonzugriff einrichten</string>
     <string name="voice_help">Die Spracheingabe nutzt den Sprachdienst des Systems und kann Internet benötigen. Sie ist in Passwortfeldern ausgeblendet.</string>
     <string name="privacy_heading">Datenschutz</string>

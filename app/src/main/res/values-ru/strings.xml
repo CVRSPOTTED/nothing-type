@@ -72,10 +72,9 @@
     <string name="autocorrect">T9 · Автокоррекция</string>
     <string name="autocorrect_help">Исправляет явные опечатки в одну букву после пробела или знака препинания. Клавиша удаления возвращает исходное слово. Отключено в чувствительных полях, адресах почты и ссылках.</string>
     <string name="suggestions_help">Начните печатать и выберите вариант над клавишами. Подсказки работают без интернета во всех восьми встроенных раскладках.</string>
-    <string name="feedback_heading">Звук и отклик</string>
-    <string name="feedback_detail">Используются системные настройки звука и вибрации.</string>
+    <string name="feedback_heading">Вибрация и голосовой ввод</string>
+    <string name="feedback_detail">Учитываются системные настройки вибрации.</string>
     <string name="haptic_feedback">Тактильный отклик</string>
-    <string name="key_sound">Звук нажатия</string>
     <string name="configure_microphone">Настроить доступ к микрофону</string>
     <string name="voice_help">Нажмите «Голос» в клавиатуре. Распознавание выполняет системная служба; ей может потребоваться интернет. В паролях голосовой ввод скрыт.</string>
     <string name="privacy_heading">Личное остаётся личным</string>

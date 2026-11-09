@@ -25,14 +25,15 @@ internal class DictationController(
     private val finishWord: () -> Unit,
     private val status: (String) -> Unit,
     private val level: (Float) -> Unit,
-    private val preview: (String) -> Unit
+    private val preview: (String) -> Unit,
+    private val uiContext: () -> Context
 ) {
     private var recognizer: SpeechRecognizer? = null
     private var voiceGeneration = 0
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
     private val voiceTimeout = Runnable {
         stop()
-        Toast.makeText(context, context.getString(R.string.voice_timeout), Toast.LENGTH_LONG).show()
+        Toast.makeText(context, uiContext().getString(R.string.voice_timeout), Toast.LENGTH_LONG).show()
     }
     fun stop() {
         val speech = recognizer ?: return
@@ -42,15 +43,15 @@ internal class DictationController(
         runCatching { speech.cancel() }
         runCatching { speech.destroy() }
         preview("")
-        status(context.getString(R.string.voice_idle))
+        status(uiContext().getString(R.string.voice_idle))
     }
 
     fun toggle() {
         if (sensitive()) return
         if (recognizer != null) {
             runCatching { recognizer?.stopListening() }
-                .onSuccess { status(context.getString(R.string.voice_wait)) }
-                .onFailure { stop(); Toast.makeText(context, R.string.voice_error, Toast.LENGTH_LONG).show() }
+                .onSuccess { status(uiContext().getString(R.string.voice_wait)) }
+                .onFailure { stop(); Toast.makeText(context, uiContext().getString(R.string.voice_error), Toast.LENGTH_LONG).show() }
             return
         }
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -59,10 +60,10 @@ internal class DictationController(
         }
         val local = Build.VERSION.SDK_INT >= 31 && SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
         if (offlineOnly() && !local) {
-            Toast.makeText(context, context.getString(R.string.voice_local_missing), Toast.LENGTH_LONG).show(); return
+            Toast.makeText(context, uiContext().getString(R.string.voice_local_missing), Toast.LENGTH_LONG).show(); return
         }
         if (!local && !SpeechRecognizer.isRecognitionAvailable(context)) {
-            Toast.makeText(context, context.getString(R.string.voice_missing), Toast.LENGTH_LONG).show(); return
+            Toast.makeText(context, uiContext().getString(R.string.voice_missing), Toast.LENGTH_LONG).show(); return
         }
         finishWord()
         val target = connection() ?: return
@@ -88,7 +89,7 @@ internal class DictationController(
                 override fun onReadyForSpeech(params: Bundle?) {
                     if (active()) {
                         listening = true
-                        status(context.getString(R.string.voice_stop))
+                        status(uiContext().getString(R.string.voice_stop))
                     }
                 }
                 override fun onBeginningOfSpeech() = Unit
@@ -98,7 +99,7 @@ internal class DictationController(
                 override fun onBufferReceived(buffer: ByteArray?) = Unit
                 override fun onEndOfSpeech() {
                     listening = false
-                    if (active()) status(context.getString(R.string.voice_wait))
+                    if (active()) status(uiContext().getString(R.string.voice_wait))
                 }
                 override fun onError(error: Int) {
                     if (generation != voiceGeneration) return
@@ -106,13 +107,13 @@ internal class DictationController(
                             SpeechRecognizer.ERROR_CLIENT, SpeechRecognizer.ERROR_SERVER, SpeechRecognizer.ERROR_SERVER_DISCONNECTED)
                         && retrySystem()) return
                     val message = when (error) {
-                        SpeechRecognizer.ERROR_AUDIO -> context.getString(R.string.voice_audio)
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> context.getString(R.string.voice_busy)
-                        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> context.getString(R.string.voice_no_match)
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> context.getString(R.string.voice_permission)
-                        SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED, SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> context.getString(R.string.voice_language)
-                        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> context.getString(R.string.voice_network)
-                        else -> context.getString(R.string.voice_error_code, error)
+                        SpeechRecognizer.ERROR_AUDIO -> uiContext().getString(R.string.voice_audio)
+                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> uiContext().getString(R.string.voice_busy)
+                        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> uiContext().getString(R.string.voice_no_match)
+                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> uiContext().getString(R.string.voice_permission)
+                        SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED, SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> uiContext().getString(R.string.voice_language)
+                        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> uiContext().getString(R.string.voice_network)
+                        else -> uiContext().getString(R.string.voice_error_code, error)
                     }
                     stop(); Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                 }
@@ -121,7 +122,7 @@ internal class DictationController(
                     if (active()) {
                         val phrase = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull { it.isNotBlank() }
                         if (phrase == null || !target.commitText(phrase, 1)) {
-                            Toast.makeText(context, if (phrase == null) context.getString(R.string.voice_empty) else context.getString(R.string.voice_rejected), Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, if (phrase == null) uiContext().getString(R.string.voice_empty) else uiContext().getString(R.string.voice_rejected), Toast.LENGTH_LONG).show()
                         }
                     }
                     stop()
@@ -131,7 +132,7 @@ internal class DictationController(
                 }
                 override fun onEvent(eventType: Int, params: Bundle?) = Unit
             })
-            status(context.getString(R.string.voice_listen))
+            status(uiContext().getString(R.string.voice_listen))
             speech.startListening(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -142,7 +143,7 @@ internal class DictationController(
             handler.postDelayed(voiceTimeout, 30_000)
         } catch (_: Exception) {
             if (retrySystem()) return
-            stop(); Toast.makeText(context, context.getString(R.string.voice_error), Toast.LENGTH_LONG).show()
+            stop(); Toast.makeText(context, uiContext().getString(R.string.voice_error), Toast.LENGTH_LONG).show()
         }
     }
 

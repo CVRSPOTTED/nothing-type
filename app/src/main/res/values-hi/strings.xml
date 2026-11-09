@@ -72,10 +72,9 @@
     <string name="autocorrect">T9 · अपने आप सुधारें</string>
     <string name="autocorrect_help">स्पेस या विराम चिह्न डालने पर एक अक्षर की स्पष्ट गलती सुधरती है। बैकस्पेस आपका शब्द लौटा देता है। संवेदनशील फ़ील्ड, ईमेल और URL में यह बंद रहता है।</string>
     <string name="suggestions_help">लिखना शुरू करें और कुंजियों के ऊपर से सुझाव चुनें। सभी आठ बिल्ट-इन लेआउट में सुझाव ऑफ़लाइन काम करते हैं।</string>
-    <string name="feedback_heading">आवाज़ और कंपन</string>
-    <string name="feedback_detail">सिस्टम की आवाज़ और कंपन सेटिंग का पालन करता है।</string>
+    <string name="feedback_heading">कंपन और बोलकर लिखना</string>
+    <string name="feedback_detail">सिस्टम की कंपन सेटिंग का पालन करता है।</string>
     <string name="haptic_feedback">छूने पर कंपन</string>
-    <string name="key_sound">कुंजियों की आवाज़</string>
     <string name="configure_microphone">माइक्रोफ़ोन की अनुमति सेट करें</string>
     <string name="voice_help">बोलकर लिखने के लिए सिस्टम की वाक् सेवा इस्तेमाल होती है, जिसे इंटरनेट की ज़रूरत हो सकती है। यह पासवर्ड फ़ील्ड में नहीं दिखती।</string>
     <string name="privacy_heading">निजता</string>

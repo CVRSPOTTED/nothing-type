@@ -13,6 +13,7 @@ import android.view.inputmethod.InputMethodSubtype
 import android.widget.Toast
 import java.util.concurrent.Executors
 import dev.nothingtype.app.MainActivity
+import dev.nothingtype.app.AppLocales
 import dev.nothingtype.keyboard.Command
 import dev.nothingtype.keyboard.KeyboardFrame
 import dev.nothingtype.keyboard.KeyboardPanel
@@ -52,7 +53,8 @@ open class NothingTypeIme : InputMethodService() {
     private val dictation by lazy {
         DictationController(this, { currentInputConnection }, { isInputViewShown }, { privateField || rawInput },
             { state.languageTag }, { prefs.offlineVoiceOnly }, ::finishWord,
-            { keyboard?.updateVoice(it) }, { keyboard?.updateVoiceLevel(it) }, { keyboard?.updateVoicePreview(it) })
+            { keyboard?.updateVoice(it) }, { keyboard?.updateVoiceLevel(it) }, { keyboard?.updateVoicePreview(it) },
+            { keyboard?.context ?: AppLocales.forKeyboard(this) })
     }
 
     override fun onCreate() { super.onCreate(); prefs = Preferences(this); state = KeyboardState(prefs.language); loadDictionary() }
@@ -147,7 +149,7 @@ open class NothingTypeIme : InputMethodService() {
         state.importedLayout = if (state.language == Language.CUSTOM) prefs.loadImportedLayout() else null
         if (state.language == Language.CUSTOM && state.importedLayout == null) state.language = Language.EN
         loadDictionary()
-        val keys = KeyboardPanel(this, prefs, state, commit = ::typeText, command = ::command,
+        val keys = KeyboardPanel(AppLocales.forKeyboard(this), prefs, state, commit = ::typeText, command = ::command,
             sensitive = privateField || rawInput, enterLabel = actionLabel, chooseSuggestion = ::acceptSuggestion)
         keyboard = keys
         updateSuggestions()

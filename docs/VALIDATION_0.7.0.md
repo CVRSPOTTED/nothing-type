@@ -2,7 +2,7 @@
 
 Package: dev.nothingtype.keyboard · Version code: 11 · Minimum Android: API 26
 
-- 86 app tests and 2 swipe research tests passed. The dictionary tests use the packaged word lists, cover completions and corrections in all eight languages, and check personal words, combining marks, and Turkish casing.
+- 87 app tests and 2 swipe research tests passed. A dictation test checks French controls on a Russian device while the recognizer uses the English layout. The dictionary tests use the packaged word lists, cover completions and corrections in all eight languages, and check personal words, combining marks, and Turkish casing.
 - Android Lint reported no issues. Debug and unsigned release APKs built successfully.
 - Android 37 emulator instrumentation passed. The installed IME suggested and inserted French, Hindi, and Arabic words after switching layouts. It corrected a French typo and restored the original on Backspace. The editor and touch checks passed with 1,050 injected taps.
 - The eight bundled dictionaries contain 10,000 entries each. The [source and license](../app/src/main/assets/dictionaries/SOURCE.md) ship with the APK.

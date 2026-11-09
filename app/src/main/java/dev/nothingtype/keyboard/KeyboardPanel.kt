@@ -117,7 +117,6 @@ class KeyboardPanel(
             lastTypingKey?.confirmPendingTap()
             lastTypingKey = it
         }
-        button.isSoundEffectsEnabled = prefs.sound
         button.textSize = if (text.length > 4) 12f else prefs.fontSize.toFloat()
         button.setAutoSizeTextTypeUniformWithConfiguration(10, maxOf(12, if (text.length > 4) 12 else prefs.fontSize), 1,
             android.util.TypedValue.COMPLEX_UNIT_SP)

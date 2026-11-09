@@ -126,9 +126,6 @@ class Preferences(context: Context) {
     var haptics: Boolean
         get() = data.getBoolean("haptics", true)
         set(value) { data.edit().putBoolean("haptics", value).apply() }
-    var sound: Boolean
-        get() = data.getBoolean("sound", false)
-        set(value) { data.edit().putBoolean("sound", value).apply() }
     var offlineVoiceOnly: Boolean
         get() = data.getBoolean("offline_voice_only", false)
         set(value) { data.edit().putBoolean("offline_voice_only", value).apply() }

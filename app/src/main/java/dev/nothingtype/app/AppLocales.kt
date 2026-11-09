@@ -27,7 +27,13 @@ internal object AppLocales {
 
     fun wrap(context: Context): Context {
         if (Build.VERSION.SDK_INT >= 33) return context
+        return forKeyboard(context)
+    }
+
+    // An IME window can inherit the device language even when the app has its own locale.
+    fun forKeyboard(context: Context): Context {
         val language = selected(context) ?: return context
+        if (context.resources.configuration.locales[0]?.language == language.locale.language) return context
         return context.createConfigurationContext(Configuration().apply { setLocale(language.locale) })
     }
 

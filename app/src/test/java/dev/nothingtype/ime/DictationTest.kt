@@ -43,6 +43,34 @@ class DictationTest {
         if (view is ViewGroup) for (i in 0 until view.childCount) microphone(view.getChildAt(i))?.let { return it }
         return null
     }
+    @Test
+    @Config(qualifiers = "ru", sdk = [33])
+    fun dictationControlsFollowAppLanguageWithoutChangingRecognitionLanguage() {
+        val ime = Robolectric.buildService(EditorIme::class.java).create().get()
+        ime.getSystemService(android.app.LocaleManager::class.java).applicationLocales =
+            android.os.LocaleList.forLanguageTags("fr")
+        shadowOf(ime.application).grantPermissions(Manifest.permission.RECORD_AUDIO)
+        ShadowSpeechRecognizer.setIsOnDeviceRecognitionAvailable(true)
+        ime.onStartInput(EditorInfo().apply { inputType = InputType.TYPE_CLASS_TEXT }, false)
+        val view = ime.onCreateInputView()
+
+        fun views(root: View): Sequence<View> = sequence {
+            yield(root)
+            if (root is ViewGroup) for (index in 0 until root.childCount) yieldAll(views(root.getChildAt(index)))
+        }
+        val microphone = views(view).filterIsInstance<Button>()
+            .first { it.contentDescription == "Dictée : Dictée" }
+        microphone.performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        val recognizer = Shadow.extract<ShadowSpeechRecognizer>(requireNotNull(ShadowSpeechRecognizer.getLatestSpeechRecognizer()))
+        recognizer.triggerOnReadyForSpeech(Bundle())
+        val stop = views(view).filterIsInstance<Button>().first { it.contentDescription == "Arrêter ■" }
+        assertEquals(View.VISIBLE, (stop.parent as View).visibility)
+        assertTrue(views(view).filterIsInstance<android.widget.TextView>().any { it.text.toString() == "Arrêter ■" })
+        assertEquals("en-US", recognizer.lastRecognizerIntent.getStringExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE))
+        ime.onDestroy()
+    }
+
     @Test fun missingLocalModelRetriesSystemAndCursorNotificationAllowsResult() {
         val ime = Robolectric.buildService(EditorIme::class.java).create().get()
         shadowOf(ime.application).grantPermissions(Manifest.permission.RECORD_AUDIO)

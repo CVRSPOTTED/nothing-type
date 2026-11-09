@@ -72,10 +72,9 @@
     <string name="autocorrect">T9 · Autocorrección</string>
     <string name="autocorrect_help">Corrige errores claros de una letra al escribir un espacio o un signo de puntuación. Retroceso restaura tu palabra. Se desactiva en campos sensibles, correos y URL.</string>
     <string name="suggestions_help">Empieza a escribir y elige una sugerencia encima de las teclas. Las sugerencias funcionan sin conexión en las ocho distribuciones integradas.</string>
-    <string name="feedback_heading">Sonido y respuesta</string>
-    <string name="feedback_detail">Respeta los ajustes de sonido y vibración del sistema.</string>
+    <string name="feedback_heading">Vibración y escritura por voz</string>
+    <string name="feedback_detail">Respeta los ajustes de vibración del sistema.</string>
     <string name="haptic_feedback">Respuesta háptica</string>
-    <string name="key_sound">Sonido de las teclas</string>
     <string name="configure_microphone">Configurar acceso al micrófono</string>
     <string name="voice_help">El dictado usa el servicio de voz del sistema, que puede necesitar Internet. Se oculta en los campos de contraseña.</string>
     <string name="privacy_heading">Privacidad</string>

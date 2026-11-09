@@ -2,10 +2,7 @@ package dev.nothingtype.ui
 
 import android.app.AlertDialog
 import android.content.Context
-import android.content.res.ColorStateList
 import android.graphics.Typeface
-import android.graphics.drawable.InsetDrawable
-import android.graphics.drawable.RippleDrawable
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.EditText
@@ -26,42 +23,14 @@ internal class TypeDialogBuilder(context: Context) : AlertDialog.Builder(context
     }
 
     override fun create(): AlertDialog = super.create().apply {
-        setOnShowListener {
-            window?.setBackgroundDrawable(rounded(panel, context.dp(28).toFloat()))
-            window?.setLayout(
-                minOf(context.dp((context.resources.configuration.screenWidthDp - 32).coerceAtLeast(1)), context.dp(520)),
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            listOf(AlertDialog.BUTTON_POSITIVE, AlertDialog.BUTTON_NEGATIVE, AlertDialog.BUTTON_NEUTRAL)
-                .forEach { which ->
-                    getButton(which)?.apply {
-                        val primary = which == AlertDialog.BUTTON_POSITIVE
-                        isAllCaps = false
-                        setTextColor(if (primary) panel else ink)
-                        minWidth = 0
-                        minimumWidth = 0
-                        minHeight = context.dp(48)
-                        stateListAnimator = null
-                        elevation = 0f
-                        val fill = RippleDrawable(
-                            ColorStateList.valueOf(0x337F7F7F),
-                            rounded(if (primary) ink else control, context.dp(24).toFloat()),
-                            null
-                        )
-                        background = InsetDrawable(fill, context.dp(3), context.dp(2), context.dp(3), context.dp(2))
-                        setPadding(context.dp(16), context.dp(8), context.dp(16), context.dp(8))
-                    }
-                }
-            (getButton(AlertDialog.BUTTON_POSITIVE)?.parent as? ViewGroup)?.apply {
-                setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom + context.dp(6))
-            }
-        }
+        // Inflate the decor first, then size it before WindowManager attaches it.
+        create()
+        val available = (context.resources.configuration.screenWidthDp - 32).coerceAtLeast(1)
+        window?.setLayout(context.dp(available.coerceAtMost(520)), ViewGroup.LayoutParams.WRAP_CONTENT)
     }
 
     private companion object {
         val ink = 0xFFF2F2F2.toInt()
-        val panel = 0xFF1C1C1C.toInt()
-        val control = 0xFF303030.toInt()
     }
 }
 

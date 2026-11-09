@@ -373,7 +373,6 @@ class MainActivity : Activity() {
         page.addView(label(getString(R.string.personal_dictionary_help), 12f, muted))
         heading(getString(R.string.feedback_heading), getString(R.string.feedback_detail))
         toggle(getString(R.string.haptic_feedback), prefs.haptics) { prefs.haptics = it }
-        toggle(getString(R.string.key_sound), prefs.sound) { prefs.sound = it }
         button(page, getString(R.string.configure_microphone)) { openExternalScreen(Intent(this, VoicePermissionActivity::class.java)) }
         toggle(getString(R.string.offline_voice_only), prefs.offlineVoiceOnly) { prefs.offlineVoiceOnly = it }
         page.addView(label(getString(R.string.voice_help), 12f, muted))
