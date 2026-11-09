@@ -72,6 +72,10 @@ class EditorSmokeInstrumentation : Instrumentation() {
                     runOnMainSync { active = manager.isActive(editor) }
                     active
                 }
+                // Android 8 can keep the previous editor configuration in the visible IME.
+                if (android.os.Build.VERSION.SDK_INT == 26) {
+                    runOnMainSync { manager.restartInput(editor) }
+                }
                 await("Android shows the keyboard for the editor") {
                     runOnMainSync { manager.showSoftInput(editor, 0) }
                     imeRoot() != null
