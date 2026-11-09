@@ -67,7 +67,11 @@ class EditorSmokeInstrumentation : Instrumentation() {
                     runOnMainSync { focused = editor.hasWindowFocus() && editor.requestFocus() }
                     focused
                 }
-                runOnMainSync { manager.restartInput(editor) }
+                await("Android connects the input method to the focused editor") {
+                    var active = false
+                    runOnMainSync { active = manager.isActive(editor) }
+                    active
+                }
                 await("Android shows the keyboard for the editor") {
                     runOnMainSync { manager.showSoftInput(editor, 0) }
                     imeRoot() != null
@@ -142,10 +146,17 @@ class EditorSmokeInstrumentation : Instrumentation() {
                     }
                 } ?: false
             }
-            await("IME types in the web editor") {
-                key("q", "й")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
+            await("web editor is focused and the keyboard is ready") {
+                webEditor()?.isFocused == true && key(next) != null
             }
-            await("web editor receives text") { webEditor()?.text?.toString() in listOf("q", "й") }
+            check(checkNotNull(key(next)).performAction(AccessibilityNodeInfo.ACTION_CLICK))
+            await("web editor receives text") {
+                val expectedWebText = "Typed [$next]"
+                uiAutomation.windows.asSequence().mapNotNull { it.root }.any { root ->
+                    root.packageName?.toString() == context.packageName &&
+                        find(root) { it.text?.toString() == expectedWebText } != null
+                }
+            }
             await("settings button opens the app") {
                 key("Settings", "Настройки")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
             }
