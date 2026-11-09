@@ -34,9 +34,8 @@
     <string name="emoji_objects">Предметы</string>
     <string name="emoji_symbols">Символы</string>
     <string name="emoji_flags">Флаги</string>
-    <string name="status_selected">●  Nothing Type выбрана · можно печатать</string>
-    <string name="status_enabled">●  Включена · осталось выбрать клавиатуру</string>
-    <string name="status_setup">○  Настройте клавиатуру за два шага</string>
+    <string name="status_enabled">Клавиатура включена</string>
+    <string name="status_setup">Клавиатура выключена</string>
     <string name="enable_keyboard">Включить Nothing Type</string>
     <string name="choose_keyboard">Выбрать клавиатуру</string>
     <string name="radius">Скругление</string>
@@ -71,8 +70,8 @@
     <string name="switch_to_language">Сменить раскладку на %1$s</string>
     <string name="space_button_help">Пробел. Проведите для перемещения курсора.</string>
     <string name="autocorrect">T9 · Автокоррекция</string>
-    <string name="autocorrect_help">Исправляет однозначные опечатки в одну букву по словарю RU/EN после пробела или знака препинания. Сразу нажмите удаление, чтобы вернуть своё слово. Отключена в чувствительных полях, почте и ссылках.</string>
-    <string name="suggestions_help">Начните слово и выберите продолжение над клавишами. Словарь RU/EN встроен, без обучения и сети.</string>
+    <string name="autocorrect_help">Исправляет явные опечатки в одну букву после пробела или знака препинания. Клавиша удаления возвращает исходное слово. Отключено в чувствительных полях, адресах почты и ссылках.</string>
+    <string name="suggestions_help">Начните печатать и выберите вариант над клавишами. Подсказки работают без интернета во всех восьми встроенных раскладках.</string>
     <string name="feedback_heading">Звук и отклик</string>
     <string name="feedback_detail">Используются системные настройки звука и вибрации.</string>
     <string name="haptic_feedback">Тактильный отклик</string>
@@ -81,7 +80,7 @@
     <string name="voice_help">Нажмите «Голос» в клавиатуре. Распознавание выполняет системная служба; ей может потребоваться интернет. В паролях голосовой ввод скрыт.</string>
     <string name="privacy_heading">Личное остаётся личным</string>
     <string name="privacy_detail">Нет разрешения на интернет, аналитики и истории ввода. Буфер читается только по нажатию «Вставить»; в полях паролей эта кнопка скрыта.</string>
-    <string name="footer">NOTHING TYPE  /  0.6.1\nНезависимый проект Android</string>
+    <string name="footer">NOTHING TYPE  /  %1$s\nНезависимый проект Android</string>
     <string name="delete_character">Удалить символ</string>
     <string name="no_suggestion">Нет предложения</string>
     <string name="cursor_left">Переместить курсор влево</string>
@@ -102,7 +101,7 @@
     <string name="ndot_import_error">Не удалось открыть шрифт. Выбери OTF, TTF или ZIP со шрифтом.</string>
     <string name="shift_active">Shift включён. Удерживай для Caps Lock.</string>
     <string name="caps_active">Caps Lock включён. Нажми, чтобы выключить.</string>
-    <string name="key_size_help">Увеличь высоту, чтобы было проще попадать по клавишам. Меньший зазор делает клавиши шире.</string>
+    <string name="key_size_help">Увеличьте высоту, чтобы было проще попадать по клавишам.</string>
     <string name="background_help">Добавляет движущиеся цветные пятна под клавишами.</string>
     <string name="ndot_cyrillic">Ndot рисует латинские буквы и цифры точками. Русские буквы отображаются системным шрифтом.</string>
     <string name="test_keyboard">Проверить ввод</string>
@@ -116,7 +115,7 @@
     <string name="compact_russian">Шире клавиши русской раскладки</string>
     <string name="compact_russian_help">Ё — удержанием Е, Ъ — удержанием Ь. Выключите, чтобы вернуть отдельные клавиши для всех букв.</string>
     <string name="personal_dictionary">Мои слова</string>
-    <string name="personal_dictionary_help">Добавьте до 500 слов на русском или английском вручную. Они появятся в подсказках и не будут исправляться. Автоматического обучения нет.</string>
+    <string name="personal_dictionary_help">Добавьте до 500 слов для встроенных раскладок. Они появятся в подсказках и не будут исправляться. Клавиатура не запоминает слова автоматически.</string>
     <string name="personal_dictionary_hint">Одно слово на строку</string>
     <string name="offline_voice_only">Голосовой ввод только без сети</string>
     <string name="voice_local_missing">Локальное распознавание недоступно. Установите службу и языковую модель или выключите режим без сети.</string>
@@ -133,4 +132,11 @@
     <string name="layout_import_error">Не удалось прочитать раскладку. Выберите поддерживаемый файл KLC с kbdlayout.info.</string>
     <string name="space_language_help">Пробел, %1$s. Удерживайте для выбора языка или проведите для перемещения курсора.</string>
     <string name="save">Сохранить</string>
+    <string name="tab_settings">Настройки</string>
+    <string name="disable_keyboard">Выключить Nothing Type</string>
+    <string name="app_language">Язык приложения</string>
+    <string name="app_language_current">Язык приложения · %1$s</string>
+    <string name="language_system">Язык системы</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="theme_light">Светлая</string>
 </resources>

@@ -2,13 +2,16 @@ package dev.nothingtype.ime
 
 import android.Manifest
 import android.app.Activity
-import android.app.AlertDialog
+import dev.nothingtype.ui.TypeDialogBuilder
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Toast
 import dev.nothingtype.R
+import dev.nothingtype.app.AppLocales
 
 class VoicePermissionActivity : Activity() {
+    override fun attachBaseContext(newBase: android.content.Context) = super.attachBaseContext(AppLocales.wrap(newBase))
+
     private var requesting = false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,7 +25,7 @@ class VoicePermissionActivity : Activity() {
         val history = getPreferences(MODE_PRIVATE)
         val blocked = history.getBoolean("microphone_requested", false) &&
             !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
-        AlertDialog.Builder(this)
+        TypeDialogBuilder(this)
             .setTitle(getString(R.string.voice_input))
             .setMessage(getString(R.string.permission_message))
             .setPositiveButton(getString(if (blocked) R.string.open_android_settings else R.string.permission_continue)) { _, _ ->

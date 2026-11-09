@@ -10,8 +10,8 @@ android {
         applicationId = "dev.nothingtype.keyboard"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.6.1"
+        versionCode = 11
+        versionName = "0.7.0"
         testApplicationId = "dev.nothingtype.testing"
         testInstrumentationRunner = "dev.nothingtype.testing.EditorSmokeInstrumentation"
     }
@@ -24,6 +24,8 @@ android {
         isIncludeAndroidResources = true
         all { it.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2") }
     }
+    buildFeatures { buildConfig = true }
+    bundle { language { enableSplit = false } }
     lint { abortOnError = true }
     val ownerKeystore = providers.environmentVariable("NOTHING_TYPE_KEYSTORE").orNull
     signingConfigs {

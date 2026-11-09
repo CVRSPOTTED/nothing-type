@@ -14,6 +14,6 @@ enum class Language(val title: String, val tag: String, val space: String) {
     CUSTOM("", "und", "space");
 
     val locale: Locale get() = Locale.forLanguageTag(tag)
-    val hasDictionary: Boolean get() = this == EN || this == RU
+    val hasDictionary: Boolean get() = this != CUSTOM
     val usesCase: Boolean get() = this != AR && this != HI
 }

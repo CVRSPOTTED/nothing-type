@@ -16,6 +16,9 @@ import android.view.accessibility.AccessibilityWindowInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import dev.nothingtype.R
+import dev.nothingtype.keyboard.Language
+import dev.nothingtype.settings.LanguageSwitch
+import dev.nothingtype.settings.Preferences
 
 /** Runs the actual installed IME against native text, password and decimal editors. */
 class EditorSmokeInstrumentation : Instrumentation() {
@@ -107,6 +110,8 @@ class EditorSmokeInstrumentation : Instrumentation() {
             await("IME is hidden") { imeRoot() == null }
             focus(editorActivity.editor)
             await("IME restarts in a text editor") { key("q", "Q", "й", "Й") != null }
+            runMultilingualDictionarySmoke(editorActivity.editor)
+            result.putString("multilingual_dictionaries", "French, Hindi and Arabic")
             runTypingBenchmark(editorActivity.editor, result)
             val external = "${context.packageName}/${ExternalEditorActivity::class.java.name}"
             check("Error" !in shell("am start -W -f 0x10008000 -n $external"))
@@ -129,7 +134,7 @@ class EditorSmokeInstrumentation : Instrumentation() {
                 key("Settings", "Настройки")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
             }
             await("Nothing Type settings activity is visible") {
-                val label = targetContext.getString(R.string.tab_style)
+                val label = targetContext.getString(R.string.keyboard_languages)
                 uiAutomation.windows.asSequence().mapNotNull { it.root }.any { root ->
                     root.packageName?.toString() == packageName && find(root) { it.text?.toString() == label } != null
                 }
@@ -166,6 +171,83 @@ class EditorSmokeInstrumentation : Instrumentation() {
         var value = ""
         runOnMainSync { value = editor.text.toString() }
         return value
+    }
+
+    private fun runMultilingualDictionarySmoke(editor: EditText) {
+        val prefs = Preferences(targetContext)
+        val enabled = prefs.enabledLanguages
+        val selected = prefs.language
+        val mode = prefs.languageSwitch
+        val suggestions = prefs.suggestions
+        val manager = editor.context.getSystemService(InputMethodManager::class.java)
+        fun clearEditor() = runOnMainSync {
+            editor.setText("")
+            editor.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_AUTO_CORRECT
+            manager.restartInput(editor)
+        }
+
+        fun press(label: String) = await("press " + label) {
+            key(label)?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
+        }
+
+        try {
+            prefs.enabledLanguages = listOf(Language.EN, Language.FR, Language.HI, Language.AR)
+            prefs.language = Language.EN
+            prefs.languageSwitch = LanguageSwitch.BUTTON
+            prefs.suggestions = true
+            clearEditor()
+            val words = listOf(
+                Triple(Language.FR, "bonjou", "bonjour"),
+                Triple(Language.HI, "नमस्त", "नमस्ते"),
+                Triple(Language.AR, "مرحب", "مرحبا")
+            )
+            for ((language, prefix, word) in words) {
+                val switch = targetContext.getString(R.string.switch_to_language, language.title)
+                press(switch)
+                val activeLayout = targetContext.getString(
+                    R.string.switch_to_language,
+                    prefs.enabledLanguages[(prefs.enabledLanguages.indexOf(language) + 1) % prefs.enabledLanguages.size].title
+                )
+                await("new layout for " + language.name) { key(activeLayout) != null }
+                prefix.forEach { press(it.toString()) }
+                val completion = targetContext.getString(R.string.suggestion_label, word)
+                try {
+                    await("editor receives prefix for " + language.name) { read(editor) == prefix }
+                    await("dictionary completion for " + language.name) {
+                        key(completion)?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
+                    }
+                } catch (failure: IllegalStateException) {
+                    val labels = mutableListOf<String>()
+                    imeRoot()?.let { root ->
+                        find(root) { node ->
+                            node.contentDescription?.toString()?.takeIf { it.startsWith("Complete") }?.let(labels::add)
+                            false
+                        }
+                    }
+                    throw IllegalStateException("Dictionary check failed: " + language.name +
+                        ", editor=" + read(editor) + ", suggestions=" + labels, failure)
+                }
+                await("editor receives the suggestion for " + language.name) { read(editor) == "$word " }
+                clearEditor()
+                if (language == Language.FR) {
+                    val space = targetContext.getString(R.string.space_button_help)
+                    await("French layout restarts") { key("b") != null && key(space) != null }
+                    "bonjjour".forEach { press(it.toString()) }
+                    press(space)
+                    await("French autocorrect") { read(editor) == "bonjour " }
+                    check(checkNotNull(key(targetContext.getString(R.string.delete_character)))
+                        .performAction(AccessibilityNodeInfo.ACTION_CLICK))
+                    await("French correction undo") { read(editor) == "bonjjour" }
+                    clearEditor()
+                }
+            }
+        } finally {
+            prefs.enabledLanguages = enabled
+            prefs.language = selected
+            prefs.languageSwitch = mode
+            prefs.suggestions = suggestions
+            clearEditor()
+        }
     }
 
     private fun runTypingBenchmark(editor: EditText, result: Bundle) {

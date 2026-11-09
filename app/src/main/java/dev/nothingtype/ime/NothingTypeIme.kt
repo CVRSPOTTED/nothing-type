@@ -20,6 +20,7 @@ import dev.nothingtype.keyboard.KeyboardState
 import dev.nothingtype.keyboard.Language
 import dev.nothingtype.keyboard.Layer
 import dev.nothingtype.keyboard.DictionaryRepository
+import dev.nothingtype.keyboard.WordText
 import dev.nothingtype.R
 import dev.nothingtype.settings.Preferences
 
@@ -34,6 +35,7 @@ open class NothingTypeIme : InputMethodService() {
     private var keyboard: KeyboardPanel? = null
     private var dictionary = DictionaryRepository.fallback
     private var dictionaryRequest = 0
+    private var dictionaryKey: Pair<Language, Set<String>>? = null
     private var destroyed = false
     private val composing = StringBuilder()
     private data class Correction(val original: String, val replacement: String, var cursorEnd: Int? = null)
@@ -55,8 +57,14 @@ open class NothingTypeIme : InputMethodService() {
 
     override fun onCreate() { super.onCreate(); prefs = Preferences(this); state = KeyboardState(prefs.language); loadDictionary() }
     private fun loadDictionary() {
+        val language = state.language
+        val key = language to prefs.personalWords
+        if (key == dictionaryKey) return
+        if (dictionaryKey?.first != language) dictionary = DictionaryRepository.fallback
+        dictionaryKey = key
         val request = ++dictionaryRequest
-        DictionaryRepository.load(this, prefs.personalWords) { loaded ->
+        if (!language.hasDictionary) return
+        DictionaryRepository.load(this, language, key.second) { loaded ->
             if (!destroyed && request == dictionaryRequest) { dictionary = loaded; updateSuggestions() }
         }
     }
@@ -122,7 +130,6 @@ open class NothingTypeIme : InputMethodService() {
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         state.language = prefs.language
-        loadDictionary()
         setInputView(panel())
     }
 
@@ -139,6 +146,7 @@ open class NothingTypeIme : InputMethodService() {
     private fun panel(): View {
         state.importedLayout = if (state.language == Language.CUSTOM) prefs.loadImportedLayout() else null
         if (state.language == Language.CUSTOM && state.importedLayout == null) state.language = Language.EN
+        loadDictionary()
         val keys = KeyboardPanel(this, prefs, state, commit = ::typeText, command = ::command,
             sensitive = privateField || rawInput, enterLabel = actionLabel, chooseSuggestion = ::acceptSuggestion)
         keyboard = keys
@@ -210,7 +218,7 @@ open class NothingTypeIme : InputMethodService() {
             return
         }
         if (state.language.hasDictionary && compositionSupported && allowSuggestions && (prefs.suggestions || (prefs.autocorrect && allowAutocorrect)) &&
-            text.all(Char::isLetter) && composing.length < 48) {
+            composing.length + text.length <= 48 && WordText.canAppend(text, state.language, composing.lastOrNull())) {
             keepOriginal = false
             composing.append(text)
             if (!connection.setComposingText(composing.toString(), 1)) {
@@ -238,8 +246,13 @@ open class NothingTypeIme : InputMethodService() {
     private fun commitWord(separator: String) {
         val original = composing.toString()
         val correction = if (prefs.autocorrect && allowAutocorrect && !keepOriginal &&
-            original.lowercase(java.util.Locale.ROOT) !in prefs.personalWords &&
-            (separator.isEmpty() || (separator.length == 1 && separator[0] in " \n.,!?;:"))) dictionary.correction(original, state.language) else null
+            (separator.isEmpty() || (separator.length == 1 && separator[0] in " \n.,!?;:،؛؟।॥"))) {
+            dictionary.correction(original, state.language)?.takeUnless {
+                // A manual entry also wins while its new dictionary index is being built.
+                val normalized = WordText.normalize(original, state.language)
+                prefs.personalWords.any { WordText.normalize(it, state.language) == normalized }
+            }
+        } else null
         val connection = currentInputConnection ?: return
         if (correction != null && connection.commitText(correction + separator, 1)) {
             undoCorrection = Correction(original, correction + separator)
@@ -368,9 +381,13 @@ open class NothingTypeIme : InputMethodService() {
                 if (text != null) connection?.commitText(text, 1)
                 else Toast.makeText(this, getString(R.string.clipboard_empty), Toast.LENGTH_SHORT).show()
             }
-            Command.SETTINGS -> startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            Command.SETTINGS -> startActivity(MainActivity.settingsIntent(this))
             Command.VOICE -> toggleVoice()
-            Command.LANGUAGE -> { stopVoice(); finishWord() }
+            Command.LANGUAGE -> {
+                stopVoice()
+                finishWord()
+                loadDictionary()
+            }
         }
     }
 }

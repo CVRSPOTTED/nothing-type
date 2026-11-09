@@ -5,12 +5,13 @@ import android.graphics.Color
 import dev.nothingtype.keyboard.Language
 import dev.nothingtype.keyboard.ImportedLayout
 import dev.nothingtype.keyboard.LayoutKey
+import dev.nothingtype.keyboard.WordText
 import org.json.JSONArray
 import org.json.JSONObject
 
-enum class Palette(val title: String, val canvas: Int, val key: Int, val ink: Int, val accent: Int) {
-    DARK("Dark", Color.BLACK, Color.rgb(32, 32, 32), Color.rgb(242, 242, 242), Color.WHITE),
-    LIGHT("Light", Color.rgb(235, 235, 232), Color.WHITE, Color.rgb(22, 22, 22), Color.rgb(30, 30, 30))
+enum class Palette(val canvas: Int, val key: Int, val ink: Int, val accent: Int) {
+    DARK(Color.BLACK, Color.rgb(32, 32, 32), Color.rgb(242, 242, 242), Color.WHITE),
+    LIGHT(Color.rgb(235, 235, 232), Color.WHITE, Color.rgb(22, 22, 22), Color.rgb(30, 30, 30))
 }
 
 enum class LanguageSwitch { SPACE_HOLD, BUTTON }
@@ -22,8 +23,8 @@ class Preferences(context: Context) {
     var personalWords: Set<String>
         get() = data.getStringSet("personal_words", emptySet()).orEmpty().toSet()
         set(value) {
-            val words = value.asSequence().map { it.trim().lowercase(java.util.Locale.ROOT) }
-                .filter { it.length in 2..48 && (it.all { c -> c in 'a'..'z' } || it.all { c -> c in 'а'..'я' || c == 'ё' }) }
+            val words = value.asSequence().map { WordText.canonical(it.trim()) }
+                .filter { word -> word.length in 2..48 && Language.entries.any { it.hasDictionary && WordText.isWord(word, it) } }
                 .distinct().take(500).toSet()
             data.edit().putStringSet("personal_words", words).apply()
         }

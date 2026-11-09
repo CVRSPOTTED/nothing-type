@@ -1,6 +1,6 @@
 # Подпись и выпуск
 
-Версия в разработке: 0.6.1, versionCode 10. JDK 17, Android SDK 36.
+Готовим версию 0.7.0, versionCode 11. JDK 17, Android SDK 36.
 
 ## Ключ владельца
 

@@ -174,11 +174,11 @@ class KeyboardPanel(
 
     private fun changeLanguage(language: Language) {
         if (state.language == language) return
-        command(Command.LANGUAGE)
         state.language = language
         state.importedLayout = if (language == Language.CUSTOM) prefs.loadImportedLayout() else null
         state.updateAutomaticShift(state.shift)
         prefs.language = language
+        command(Command.LANGUAGE)
         render()
     }
 

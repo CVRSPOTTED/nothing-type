@@ -2,13 +2,22 @@
     <color name="icon_background">#000000</color>
     <string name="app_name" translatable="false">Nothing Type</string>
     <string name="subtype" translatable="false">Nothing Type · %s</string>
-    <string name="setting_value" translatable="false">%1$s · %2$d %3$s</string>
+    <string name="setting_value" translatable="false">%1$s · \u2066%2$d %3$s\u2069</string>
     <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#ED4651</item>
+        <item name="android:colorAccent">#F2F2F2</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowBackground">#000000</item>
         <item name="android:navigationBarColor">#000000</item>
         <item name="android:statusBarColor">#000000</item>
+    </style>
+    <style name="TypeDialogTheme" parent="android:style/Theme.Material.Dialog.Alert">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#F2F2F2</item>
+        <item name="android:colorControlNormal">#A9A9A9</item>
+        <item name="android:colorControlHighlight">#26FFFFFF</item>
+        <item name="android:textColorPrimary">#F2F2F2</item>
+        <item name="android:textColorSecondary">#B0B0B0</item>
+        <item name="android:backgroundDimAmount">0.65</item>
     </style>
 </resources>

@@ -29,9 +29,42 @@ class ExpandedDictionaryTest {
         assertEquals("привет", suggestions.correction("превет", Language.RU))
         assertEquals("offline", suggestions.correction("offlne", Language.EN))
     }
-    @Test fun manualWordsAreNormalizedBoundedAndSurviveReload() {
-        Preferences(context).personalWords = setOf("NothingType", "Ёжик", "two words", "secret123", "")
-        assertEquals(setOf("nothingtype", "ёжик"), Preferences(context).personalWords)
+    @Test fun allNewLexiconsCompleteAndCorrectInTheirOwnLanguage() {
+        val examples = listOf(
+            Triple(Language.FR, "bonjjour", "bonjour"),
+            Triple(Language.DE, "halllo", "hallo"),
+            Triple(Language.HI, "नममस्ते", "नमस्ते"),
+            Triple(Language.AR, "مررحبا", "مرحبا"),
+            Triple(Language.TR, "merhaaba", "merhaba"),
+            Triple(Language.ES, "graacias", "gracias")
+        )
+        for ((language, typo, word) in examples) {
+            val name = language.name.lowercase(java.util.Locale.ROOT)
+            val words = context.assets.open("dictionaries/" + name + ".txt").bufferedReader().readLines()
+            assertEquals(language.name, 10000, words.toSet().size)
+            assertTrue(language.name, words.all { WordText.isWord(it, language) })
+            val suggestions = Suggestions(mapOf(language to words))
+            assertTrue(language.name, word in suggestions.complete(word.dropLast(1), language))
+            assertEquals(language.name, word, suggestions.correction(typo, language))
+        }
+    }
+
+    @Test fun acceptsCombiningMarksAndUsesTurkishCasing() {
+        assertFalse(WordText.canAppend("ा", Language.HI, null))
+        assertTrue(WordText.canAppend("ा", Language.HI, 'क'))
+        assertTrue(WordText.canAppend("َ", Language.AR, 'ب'))
+        assertEquals("ışık", WordText.normalize("IŞIK", Language.TR))
+        val suggestions = Suggestions(personalWords = mapOf(
+            Language.TR to listOf("İstanbulca"),
+            Language.FR to listOf("l’équipe")
+        ))
+        assertTrue("İstanbulca" in suggestions.complete("İstan", Language.TR))
+        assertTrue("l'équipe" in suggestions.complete("l’équi", Language.FR))
+    }
+
+    @Test fun manualWordsKeepSpellingAndSurviveReload() {
+        Preferences(context).personalWords = setOf("NothingType", "Ёжик", "İstanbul", "équipe", "नमस्ते", "مَرْحَبًا", "two words", "secret123", "")
+        assertEquals(setOf("NothingType", "Ёжик", "İstanbul", "équipe", "नमस्ते", "مَرْحَبًا"), Preferences(context).personalWords)
         Preferences(context).personalWords = emptySet()
         assertTrue(Preferences(context).personalWords.isEmpty())
     }

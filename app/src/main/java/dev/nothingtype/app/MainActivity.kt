@@ -1,6 +1,7 @@
 package dev.nothingtype.app
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
 import android.os.Bundle
@@ -12,11 +13,15 @@ import dev.nothingtype.ime.VoicePermissionActivity
 import dev.nothingtype.keyboard.KlcLayout
 import dev.nothingtype.keyboard.Language
 import dev.nothingtype.R
+import dev.nothingtype.BuildConfig
 import dev.nothingtype.settings.KeyboardFont
 import dev.nothingtype.settings.KeyboardFonts
 import dev.nothingtype.settings.LanguageSwitch
 import dev.nothingtype.settings.Palette
 import dev.nothingtype.settings.Preferences
+import dev.nothingtype.ui.NothingSwitch
+import dev.nothingtype.ui.TypeDialogBuilder
+import dev.nothingtype.ui.styleDialogInput
 import dev.nothingtype.ui.action
 import dev.nothingtype.ui.dp
 import dev.nothingtype.ui.gap
@@ -27,6 +32,7 @@ class MainActivity : Activity() {
     private lateinit var prefs: Preferences
     private enum class Tab(val title: Int, val icon: Int) {
         SETUP(R.string.tab_setup, R.drawable.dock_setup),
+        SETTINGS(R.string.tab_settings, R.drawable.tool_settings),
         STYLE(R.string.tab_style, R.drawable.dock_style)
     }
 
@@ -42,6 +48,10 @@ class MainActivity : Activity() {
     private var importingFont = false
     private var ndotHint: TextView? = null
     private var status: TextView? = null
+    private var activationButton: Button? = null
+    private var appLanguageButton: Button? = null
+    private var offerAppLanguage = false
+    private var languageDialog: android.app.AlertDialog? = null
     private val ink = 0xFFF2F2F2.toInt()
     private val muted = 0xFF969696.toInt()
     private val surface = 0xFF1C1C1C.toInt()
@@ -49,13 +59,28 @@ class MainActivity : Activity() {
     private val accent = 0xFFC82230.toInt()
     private val onAccent = android.graphics.Color.WHITE
 
+    override fun attachBaseContext(newBase: Context) = super.attachBaseContext(AppLocales.wrap(newBase))
+
     override fun onCreate(savedInstanceState: Bundle?) {
         prefs = Preferences(this)
         super.onCreate(savedInstanceState)
-        tab = Tab.entries.getOrNull(savedInstanceState?.getInt("tab") ?: 0) ?: Tab.SETUP
+        AppLocales.migrateLegacyChoice(this)
+        offerAppLanguage = intent.action == Intent.ACTION_MAIN && AppLocales.shouldOfferOnLaunch(this)
+        val savedTab = savedInstanceState?.getString("selected_tab")
+        tab = Tab.entries.firstOrNull { it.name == savedTab } ?: when {
+            savedInstanceState?.getInt("tab") == 1 -> Tab.STYLE
+            intent.action == ACTION_OPEN_SETTINGS -> Tab.SETTINGS
+            else -> Tab.SETUP
+        }
         buildScreen()
         animateOnStart = savedInstanceState == null && intent.action == Intent.ACTION_MAIN
         savedInstanceState?.getInt("scroll_y")?.let { y -> scroll.post { scroll.scrollTo(0, y) } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == ACTION_OPEN_SETTINGS && tab != Tab.SETTINGS) showTab(Tab.SETTINGS)
     }
 
     private fun buildScreen() {
@@ -94,7 +119,7 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
-        if (animateOnStart && !returningFromExternalScreen) playLaunch()
+        if (animateOnStart && !returningFromExternalScreen && !offerAppLanguage) playLaunch()
         animateOnStart = true
     }
 
@@ -102,6 +127,16 @@ class MainActivity : Activity() {
         launchOverlay?.let(root::removeView)
         launchOverlay = null
         super.onStop()
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        if (offerAppLanguage && languageDialog == null) showAppLanguages(firstLaunch = true)
+    }
+
+    override fun onDestroy() {
+        languageDialog?.dismiss()
+        super.onDestroy()
     }
 
     private fun playLaunch() {
@@ -118,7 +153,7 @@ class MainActivity : Activity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putInt("tab", tab.ordinal)
+        outState.putString("selected_tab", tab.name)
         outState.putInt("scroll_y", scroll.scrollY)
         super.onSaveInstanceState(outState)
     }
@@ -133,13 +168,11 @@ class MainActivity : Activity() {
         val label = status ?: return
         val manager = getSystemService(InputMethodManager::class.java)
         val enabled = manager.enabledInputMethodList.any { it.packageName == packageName }
-        val selected = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
-            ?.startsWith("$packageName/") == true
-        label.text = when {
-            selected -> getString(R.string.status_selected)
-            enabled -> getString(R.string.status_enabled)
-            else -> getString(R.string.status_setup)
-        }
+        activationButton?.setText(if (enabled) R.string.disable_keyboard else R.string.enable_keyboard)
+        label.setText(if (enabled) R.string.status_enabled else R.string.status_setup)
+        label.setCompoundDrawablesRelativeWithIntrinsicBounds(
+            if (enabled) R.drawable.keyboard_status_on else R.drawable.keyboard_status_off, 0, 0, 0
+        )
     }
 
     private fun showTab(destination: Tab) {
@@ -147,16 +180,21 @@ class MainActivity : Activity() {
         page.removeAllViews()
         page.gravity = if (destination == Tab.SETUP) android.view.Gravity.CENTER_VERTICAL else android.view.Gravity.TOP
         status = null
+        activationButton = null
+        appLanguageButton = null
         ndotHint = null
         when (destination) {
             Tab.SETUP -> buildSetup()
-            Tab.STYLE -> {
-                buildStyle()
+            Tab.SETTINGS -> {
+                heading(getString(R.string.tab_settings))
+                appLanguageButton = button(page, appLanguageLabel()) { showAppLanguages() }
+                buildLanguages()
                 buildPlacement()
                 buildInput()
                 heading(getString(R.string.privacy_heading), getString(R.string.privacy_detail))
-                page.addView(label(getString(R.string.footer), 12f, muted))
+                page.addView(label(getString(R.string.footer, BuildConfig.VERSION_NAME), 12f, muted))
             }
+            Tab.STYLE -> buildStyle()
         }
         testInputButton.visibility = if (destination == Tab.SETUP) View.GONE else View.VISIBLE
         scroll.scrollTo(0, 0)
@@ -171,7 +209,7 @@ class MainActivity : Activity() {
             val glyph = getDrawable(item.icon)?.mutate()?.apply { setTint(tint) }
             dock.addView(action(getString(item.title), if (current) accent else surface, tint, 20).apply {
                 textSize = 11f
-                isSingleLine = true
+                maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 minHeight = dp(58)
                 setPadding(dp(3), dp(7), dp(3), dp(6))
@@ -191,35 +229,38 @@ class MainActivity : Activity() {
         if (detail != null) page.addView(label(detail, 13f, muted))
     }
 
-    private fun button(parent: LinearLayout, text: String, primary: Boolean = false, onClick: () -> Unit) {
-        parent.addView(action(text, if (primary) accent else surface, if (primary) onAccent else ink, 28).apply {
+    private fun button(parent: LinearLayout, text: String, primary: Boolean = false, onClick: () -> Unit): Button {
+        val control = action(text, if (primary) accent else surface, if (primary) onAccent else ink, 28).apply {
             minHeight = dp(50)
             setPadding(dp(12), dp(12), dp(12), dp(12))
-        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dp(8) })
-        parent.getChildAt(parent.childCount - 1).setOnClickListener { onClick() }
+            setOnClickListener { onClick() }
+        }
+        parent.addView(control, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        return control
     }
 
     private fun buildSetup() {
         page.addView(DotTitle(this, ink))
-        status = label("", 13f, accent).also(page::addView)
-        updateStatus()
-        button(page, getString(R.string.enable_keyboard), true) { openExternalScreen(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
+        status = label("", 13f, ink).apply {
+            compoundDrawablePadding = dp(6)
+        }.also(page::addView)
+        activationButton = button(page, getString(R.string.enable_keyboard), true) {
+            openExternalScreen(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+        }
         button(page, getString(R.string.choose_keyboard)) { getSystemService(InputMethodManager::class.java).showInputMethodPicker() }
-
+        updateStatus()
     }
 
     private fun buildStyle() {
         heading(getString(R.string.tab_style))
-        slider(getString(R.string.key_height), 40, 60, prefs.keyHeight) { prefs.keyHeight = it }
-        page.addView(label(getString(R.string.key_size_help), 12f, muted))
         val fonts = LinearLayout(this)
         KeyboardFont.entries.forEach { font ->
             val installed = font != KeyboardFont.NDOT || KeyboardFonts.hasNdot(this)
             val selected = font == prefs.keyboardFont && installed
             fonts.addView(action(
                 if (!installed) "Ndot ↗" else font.title,
-                if (selected) accent else surface,
-                if (selected) onAccent else ink,
+                if (selected) ink else surface,
+                if (selected) canvasColor else ink,
                 20
             ).apply {
                 isSelected = selected
@@ -244,10 +285,11 @@ class MainActivity : Activity() {
         page.addView(label(getString(R.string.keyboard_themes), 16f, ink))
         val themes = LinearLayout(this)
         Palette.entries.forEach { palette ->
-            themes.addView(action(palette.title, surface, ink, 20).apply {
+            val title = getString(if (palette == Palette.DARK) R.string.theme_dark else R.string.theme_light)
+            themes.addView(action(title, surface, ink, 20).apply {
                 minHeight = dp(48)
                 setPadding(dp(4), dp(10), dp(4), dp(10))
-                contentDescription = getString(R.string.keyboard_palette_option, palette.title)
+                contentDescription = getString(R.string.keyboard_palette_option, title)
                 setOnClickListener {
                     prefs.palette = palette
                     updateChoices(themes, palette.ordinal)
@@ -256,19 +298,8 @@ class MainActivity : Activity() {
         }
         page.addView(themes)
         updateChoices(themes, prefs.palette.ordinal)
-        val accentChoice = LinearLayout(this)
-        accentChoice.addView(action(getString(R.string.red_enter), surface, ink, 20).apply {
-            minHeight = dp(48)
-            setPadding(dp(4), dp(10), dp(4), dp(10))
-            setOnClickListener {
-                prefs.redEnter = !prefs.redEnter
-                updateChoices(accentChoice, if (prefs.redEnter) 0 else -1)
-            }
-        }, LinearLayout.LayoutParams(-1, -2).apply {
-            setMargins(dp(2), dp(8), dp(2), 0)
-        })
-        page.addView(accentChoice)
-        updateChoices(accentChoice, if (prefs.redEnter) 0 else -1)
+        page.gap(8)
+        toggle(getString(R.string.red_enter), prefs.redEnter) { prefs.redEnter = it }
         page.addView(label(getString(R.string.red_enter_help), 12f, muted))
         page.gap(12)
         slider(getString(R.string.radius), 0, 24, prefs.radius) { prefs.radius = it }
@@ -284,7 +315,7 @@ class MainActivity : Activity() {
         slider(getString(R.string.navigation_reserve), 0, 180, prefs.navigationReserve) { prefs.navigationReserve = it }
         slider(getString(R.string.keyboard_width), 75, 100, prefs.widthPercent, "%") { prefs.widthPercent = it }
         slider(getString(R.string.side_padding), 0, 24, prefs.sideMargin) { prefs.sideMargin = it }
-        val positions = LinearLayout(this)
+        val positions = LinearLayout(this).apply { layoutDirection = View.LAYOUT_DIRECTION_LTR }
         val positionNames = listOf(getString(R.string.align_left), getString(R.string.align_center), getString(R.string.align_right))
         positionNames.forEachIndexed { index, name ->
             positions.addView(action(name, surface, ink, 28).apply {
@@ -297,20 +328,12 @@ class MainActivity : Activity() {
         button(page, getString(R.string.reset_placement)) {
             prefs.resetPlacement()
             val y = scroll.scrollY
-            showTab(Tab.STYLE)
+            showTab(Tab.SETTINGS)
             scroll.post { scroll.scrollTo(0, y) }
         }
     }
 
-    private fun buildInput() {
-        heading(getString(R.string.input_heading), getString(R.string.input_detail))
-        slider(getString(R.string.landscape_height), 30, 48, prefs.landscapeHeight) { prefs.landscapeHeight = it }
-        toggle(getString(R.string.number_row), prefs.numbers) { prefs.numbers = it }
-        toggle(getString(R.string.compact_russian), prefs.compactRussian) { prefs.compactRussian = it }
-        page.addView(label(getString(R.string.compact_russian_help), 12f, muted))
-        toggle(getString(R.string.toolbar), prefs.toolbar) { prefs.toolbar = it }
-        toggle(getString(R.string.instant_input), prefs.instantInput) { prefs.instantInput = it }
-        page.addView(label(getString(R.string.input_help), 12f, muted))
+    private fun buildLanguages() {
         button(page, getString(R.string.keyboard_languages)) { showKeyboardLanguages() }
         page.addView(label(getString(R.string.language_switch)))
         val languageChoices = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -327,6 +350,21 @@ class MainActivity : Activity() {
         }
         page.addView(languageChoices)
         updateChoices(languageChoices, prefs.languageSwitch.ordinal)
+        if (resources.configuration.locales[0]?.language == Language.RU.locale.language) {
+            toggle(getString(R.string.compact_russian), prefs.compactRussian) { prefs.compactRussian = it }
+            page.addView(label(getString(R.string.compact_russian_help), 12f, muted))
+        }
+    }
+
+    private fun buildInput() {
+        heading(getString(R.string.input_heading), getString(R.string.input_detail))
+        slider(getString(R.string.key_height), 40, 60, prefs.keyHeight) { prefs.keyHeight = it }
+        slider(getString(R.string.landscape_height), 30, 48, prefs.landscapeHeight) { prefs.landscapeHeight = it }
+        page.addView(label(getString(R.string.key_size_help), 12f, muted))
+        toggle(getString(R.string.number_row), prefs.numbers) { prefs.numbers = it }
+        toggle(getString(R.string.toolbar), prefs.toolbar) { prefs.toolbar = it }
+        toggle(getString(R.string.instant_input), prefs.instantInput) { prefs.instantInput = it }
+        page.addView(label(getString(R.string.input_help), 12f, muted))
         toggle(getString(R.string.local_suggestions), prefs.suggestions) { prefs.suggestions = it }
         page.addView(label(getString(R.string.suggestions_help), 12f, muted))
         toggle(getString(R.string.autocorrect), prefs.autocorrect) { prefs.autocorrect = it }
@@ -341,10 +379,34 @@ class MainActivity : Activity() {
         page.addView(label(getString(R.string.voice_help), 12f, muted))
     }
 
+    private fun appLanguageLabel(): String {
+        val selected = AppLocales.selected(this)?.title ?: getString(R.string.language_system)
+        return getString(R.string.app_language_current, selected)
+    }
+
+    private fun showAppLanguages(firstLaunch: Boolean = false) {
+        val choices = listOf(null) + AppLocales.languages
+        val labels = choices.map { it?.title ?: getString(R.string.language_system) }.toTypedArray()
+        languageDialog = TypeDialogBuilder(this)
+            .setTitle(R.string.app_language)
+            .setCancelable(!firstLaunch)
+            .setSingleChoiceItems(labels, choices.indexOf(AppLocales.selected(this))) { dialog, index ->
+                offerAppLanguage = false
+                dialog.dismiss()
+                AppLocales.choose(this, choices[index])
+                appLanguageButton?.text = appLanguageLabel()
+            }
+            .apply { if (!firstLaunch) setNegativeButton(android.R.string.cancel, null) }
+            .create().apply {
+                setOnDismissListener { languageDialog = null }
+                show()
+            }
+    }
+
     private fun showKeyboardLanguages() {
         val languages = Language.entries.filter { prefs.layoutTitle(it).isNotEmpty() }
         val chosen = languages.map { it in prefs.enabledLanguages }.toBooleanArray()
-        android.app.AlertDialog.Builder(this)
+        TypeDialogBuilder(this)
             .setTitle(R.string.keyboard_languages)
             .setMultiChoiceItems(languages.map(prefs::layoutTitle).toTypedArray(), chosen) { _, index, checked ->
                 chosen[index] = checked
@@ -368,7 +430,7 @@ class MainActivity : Activity() {
     @Suppress("DEPRECATION")
     private fun showLayoutImport() {
         val imported = prefs.layoutTitle(Language.CUSTOM)
-        val dialog = android.app.AlertDialog.Builder(this)
+        val dialog = TypeDialogBuilder(this)
             .setTitle(R.string.manage_layout_import)
             .setMessage(getString(R.string.layout_import_help) +
                 if (imported.isEmpty()) "" else "\n\n" + getString(R.string.imported_layout_name, imported))
@@ -399,7 +461,7 @@ class MainActivity : Activity() {
     private fun showInputTest() {
         val active = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
         if (active?.startsWith("$packageName/") != true) {
-            android.app.AlertDialog.Builder(this)
+            TypeDialogBuilder(this)
                 .setTitle(R.string.test_keyboard_title)
                 .setMessage(R.string.test_keyboard_enable_first)
                 .setPositiveButton(R.string.tab_setup) { _, _ -> showTab(Tab.SETUP) }
@@ -408,6 +470,7 @@ class MainActivity : Activity() {
             return
         }
         val editor = EditText(this).apply {
+            styleDialogInput()
             hint = getString(R.string.test_keyboard_hint)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
                 android.text.InputType.TYPE_TEXT_FLAG_AUTO_CORRECT
@@ -417,7 +480,7 @@ class MainActivity : Activity() {
             setPadding(dp(20), dp(6), dp(20), 0)
             addView(editor)
         }
-        val dialog = android.app.AlertDialog.Builder(this)
+        val dialog = TypeDialogBuilder(this)
             .setTitle(R.string.test_keyboard_title)
             .setView(container)
             .setPositiveButton(android.R.string.ok, null)
@@ -429,6 +492,7 @@ class MainActivity : Activity() {
 
     private fun editPersonalDictionary() {
         val editor = EditText(this).apply {
+            styleDialogInput()
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
                 android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             imeOptions = android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
@@ -439,7 +503,7 @@ class MainActivity : Activity() {
             hint = getString(R.string.personal_dictionary_hint)
         }
         val container = FrameLayout(this).apply { setPadding(dp(20), dp(8), dp(20), dp(8)); addView(editor) }
-        android.app.AlertDialog.Builder(this).setTitle(R.string.personal_dictionary).setView(container)
+        TypeDialogBuilder(this).setTitle(R.string.personal_dictionary).setView(container)
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 prefs.personalWords = editor.text.toString().split(Regex("[\\s,;]+")).toSet()
             }.setNegativeButton(android.R.string.cancel, null).show()
@@ -461,10 +525,10 @@ class MainActivity : Activity() {
             val selected = index == selectedIndex
             (row.getChildAt(index) as Button).apply {
                 isSelected = selected
-                setTextColor(if (selected) onAccent else ink)
+                setTextColor(if (selected) canvasColor else ink)
                 background = android.graphics.drawable.RippleDrawable(
                     android.content.res.ColorStateList.valueOf(0x337F7F7F),
-                    rounded(if (selected) accent else surface, dp(20).toFloat()), null
+                    rounded(if (selected) ink else surface, dp(20).toFloat()), null
                 )
             }
         }
@@ -484,9 +548,14 @@ class MainActivity : Activity() {
         }, IMPORT_NDOT)
     }
 
-    private companion object {
-        const val IMPORT_NDOT = 22
-        const val IMPORT_KLC = 23
+    companion object {
+        private const val IMPORT_NDOT = 22
+        private const val IMPORT_KLC = 23
+        private const val ACTION_OPEN_SETTINGS = "dev.nothingtype.action.OPEN_SETTINGS"
+
+        internal fun settingsIntent(context: Context) =
+            Intent(context, MainActivity::class.java).setAction(ACTION_OPEN_SETTINGS)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
     }
 
     @Deprecated("Uses framework Activity result dispatch")
@@ -555,7 +624,7 @@ class MainActivity : Activity() {
     }
 
     private fun toggle(title: String, value: Boolean, save: (Boolean) -> Unit) {
-        card().addView(Switch(this).apply {
+        card().addView(NothingSwitch(this).apply {
             text = title; textSize = 16f; setTextColor(ink); isChecked = value
             setPadding(dp(2), dp(12), dp(2), dp(12)); minHeight = dp(56)
             setOnCheckedChangeListener { _, checked -> save(checked) }

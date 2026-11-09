@@ -14,7 +14,14 @@ Builds:
     subdir: app
     gradle:
       - yes
+  - versionName: 0.7.0
+    versionCode: 11
+    commit: v0.7.0
+    disable: Pending source publication and F-Droid validation
+    subdir: app
+    gradle:
+      - yes
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 0.6.1
-CurrentVersionCode: 10
+CurrentVersion: 0.7.0
+CurrentVersionCode: 11
