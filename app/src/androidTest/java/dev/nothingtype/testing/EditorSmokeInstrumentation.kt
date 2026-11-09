@@ -2,6 +2,7 @@ package dev.nothingtype.testing
 
 import android.app.Activity
 import android.app.Instrumentation
+import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Rect
 import android.os.Bundle
@@ -31,7 +32,11 @@ class EditorSmokeInstrumentation : Instrumentation() {
         val result = Bundle()
         var code = Activity.RESULT_CANCELED
         val packageName = targetContext.packageName
-        val ime = "$packageName/dev.nothingtype.ime.NothingTypeIme"
+        val component = ComponentName(packageName, "dev.nothingtype.ime.NothingTypeIme")
+        val ime = component.flattenToString()
+        fun selectedIme() = shell("settings get secure default_input_method").trim()
+        fun listedImes(command: String) = shell(command).lineSequence()
+            .mapNotNull { ComponentName.unflattenFromString(it.trim()) }
         var oldIme: String? = null
         var oldHardwareIme: String? = null
         var wasEnabled = true
@@ -41,13 +46,17 @@ class EditorSmokeInstrumentation : Instrumentation() {
             uiAutomation.serviceInfo = uiAutomation.serviceInfo.apply {
                 flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
             }
-            oldIme = shell("settings get secure default_input_method").trim()
-            wasEnabled = shell("ime list -s").lineSequence().any { it.trim() == ime }
+            oldIme = selectedIme()
+            await("Android registers $ime") { component in listedImes("ime list -a -s") }
+            wasEnabled = component in listedImes("ime list -s")
             oldHardwareIme = shell("settings get secure show_ime_with_hard_keyboard").trim()
             shell("settings put secure show_ime_with_hard_keyboard 1")
-            shell("ime enable $ime")
-            shell("ime set $ime")
-            check(shell("settings get secure default_input_method").trim() == ime)
+            val enableResult = shell("ime enable $ime 2>&1").trim()
+            await("Android enables $ime ($enableResult)") { component in listedImes("ime list -s") }
+            val selectResult = shell("ime set $ime 2>&1").trim()
+            await("Android selects $ime ($selectResult)") {
+                ComponentName.unflattenFromString(selectedIme()) == component
+            }
             val editorActivity = startActivitySync(Intent(targetContext, EditorFixtureActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as EditorFixtureActivity
             activity = editorActivity
@@ -87,8 +96,7 @@ class EditorSmokeInstrumentation : Instrumentation() {
             await("lowercase keys for T9") { key(typo.first().toString()) != null }
             tapSequence(*(typo.map(Char::toString) + space).toTypedArray())
             await("T9 corrects the word on space") { read(editorActivity.editor) == corrected }
-            check(checkNotNull(key(targetContext.getString(R.string.delete_character)))
-                .performAction(AccessibilityNodeInfo.ACTION_CLICK))
+            tapSequence(targetContext.getString(R.string.delete_character))
             await("Backspace undoes the T9 correction") { read(editorActivity.editor) == typo }
             tapSequence(space)
             await("space keeps the explicitly restored word") { read(editorActivity.editor) == "$typo " }
@@ -235,8 +243,7 @@ class EditorSmokeInstrumentation : Instrumentation() {
                     "bonjjour".forEach { press(it.toString()) }
                     press(space)
                     await("French autocorrect") { read(editor) == "bonjour " }
-                    check(checkNotNull(key(targetContext.getString(R.string.delete_character)))
-                        .performAction(AccessibilityNodeInfo.ACTION_CLICK))
+                    tapSequence(targetContext.getString(R.string.delete_character))
                     await("French correction undo") { read(editor) == "bonjjour" }
                     clearEditor()
                 }
