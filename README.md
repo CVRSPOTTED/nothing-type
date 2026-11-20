@@ -1,70 +1,60 @@
-<p align="center"><img src="design/logo/icon-512.png" width="96" alt="Nothing Type app icon"></p>
+<p align="center"><img src="design/logo/icon-512.png" width="104" alt="Nothing Type icon"></p>
 
 <h1 align="center">Nothing Type</h1>
 
-<p align="center">An open-source Android keyboard inspired by Nothing OS.</p>
+<p align="center">An offline-first Android keyboard inspired by Nothing OS.</p>
 
 <p align="center">
-  <a href="https://github.com/CVRSPOTTED/nothing-type/releases/download/v0.8.0/nothing-type-0.8.0.apk"><strong>Download APK 0.8.0</strong></a> ·
-  <a href="https://github.com/CVRSPOTTED/nothing-type/releases">All releases</a> ·
-  <a href="README.ru.md">Русский</a>
+  <a href="https://github.com/CVRSPOTTED/nothing-type/releases/download/v0.8.0/nothing-type-0.8.0.apk"><strong>Download APK 0.8.0</strong></a>
+  · <a href="https://github.com/CVRSPOTTED/nothing-type/releases/tag/v0.8.0">Release notes</a>
+  · <a href="README.ru.md">Русский</a>
 </p>
 
-[![Android checks](https://github.com/CVRSPOTTED/nothing-type/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/CVRSPOTTED/nothing-type/actions/workflows/android.yml)
+<p align="center">Android 8.0+ · 9 languages · <a href="LICENSE">MIT</a></p>
 
 ## Screenshots
 
-| Typing | Settings | Style |
-| :---: | :---: | :---: |
-| <img src="screenshots/keyboard.png" width="240" alt="Dark keyboard with word suggestions and a red Enter key"> | <img src="screenshots/settings.png" width="240" alt="App and keyboard language settings"> | <img src="screenshots/style.png" width="240" alt="Keyboard theme and font controls"> |
+<p align="center">
+  <a href="screenshots/0.8.0/enable.png"><img src="screenshots/0.8.0/enable.png" width="220" alt="Enable screen with the keyboard selected"></a>
+  <a href="screenshots/0.8.0/settings.png"><img src="screenshots/0.8.0/settings.png" width="220" alt="Settings screen with language switching and keyboard placement controls"></a>
+  <a href="screenshots/0.8.0/style.png"><img src="screenshots/0.8.0/style.png" width="220" alt="Style screen with font, theme and accent controls"></a>
+</p>
+
+The screenshots were taken on a Phone (3) running the experimental build with the Glyph tab.
 
 ## Features
 
-### Typing and languages
+- **Nine interface languages and keyboard layouts.** Arabic, English, French, German, Hindi, Italian, Russian, Spanish and Turkish. Choose the app language separately from the typing layouts.
+- **Offline suggestions and autocorrect.** Each built-in layout has a 10,000-entry dictionary. Add your own words, undo corrections with Backspace, and switch layouts with the globe key or by holding Space. Import a KLC file for a custom layout.
+- **Typing tools.** Slide across Space to move the cursor, hold a key for alternate characters, browse 3,781 emoji, paste from the clipboard, or dictate through Android’s speech service.
+- **Appearance and feedback.** Dark, Light and NP2(a)SE, four accent choices, Roboto and Geist, and Ndot import from ZIP, TTF or OTF. Adjust key size, spacing and position, or enable haptics and a glow that responds to dictation.
 
-- Nine app languages and keyboard layouts, including Italian. The others are English, Russian, French, German, Hindi, Arabic, Turkish and Spanish.
-- Offline suggestions and autocorrect with 10,000 dictionary entries per built-in layout. Add your own words and undo a correction with Backspace.
-- Switch languages by holding Space or tapping the globe key. Import a KLC file for a custom layout.
-
-### Editing and voice
-
-- Slide across Space to move the cursor. Hold keys for alternate characters or hold Backspace to repeat deletion.
-- Pick from 3,781 emoji, paste from the clipboard or dictate using Android’s speech service. Dictation may require internet access.
-- Suggestions stay on your device. Nothing Type keeps no typing history. See the [privacy policy](PRIVACY.md).
-
-### Appearance and feedback
-
-- Dark, Light and NP2(a)SE themes. Choose a theme-based, red, yellow or purple accent for Enter and Backspace.
-- Roboto and Geist, Ndot import from ZIP, TTF or OTF, and rounded alternate-character menus that match the keyboard theme.
-- Adjust key height, spacing, corner radius and keyboard position. Try your changes from the app.
-- Optional vibration and a keyboard glow that reacts to your voice during dictation.
-
-**Glyph Sync** is an experimental feature for Nothing Phone (3). The [local build guide](docs/BUILD.md) explains how to enable it in a debug build with Nothing’s Glyph Matrix SDK.
+Word suggestions stay on the device. Nothing Type keeps no typing history. Android’s speech service may need internet access. [Privacy policy](PRIVACY.md)
 
 ## Install
 
-1. Download and install the [signed APK](https://github.com/CVRSPOTTED/nothing-type/releases/tag/v0.8.0). The minimum OS version is Android 8.0.
-2. Open Nothing Type. On **Enable**, turn on the keyboard in Android settings, then select it as your input method.
-3. Use **Settings** for languages and typing, and **Style** for appearance. Tap **Try typing** to test your changes.
+1. [Download the signed 0.8.0 APK](https://github.com/CVRSPOTTED/nothing-type/releases/download/v0.8.0/nothing-type-0.8.0.apk) and open it on Android.
+2. Open Nothing Type, turn it on under **Enable** and select it as your keyboard.
+3. Choose layouts in **Settings** and customize the keyboard in **Style**. Both tabs have a **Try typing** button.
 
-[Setup guide and FAQ](docs/SETUP.md)
+Version 0.8.0 is a pre-release. The Android 8 automated check for switching to a password field is still failing. [Setup and FAQ](docs/SETUP.md) · [Android checks](https://github.com/CVRSPOTTED/nothing-type/actions/runs/44664793512) · [All releases](https://github.com/CVRSPOTTED/nothing-type/releases)
 
-## Build locally
+## Glyph Sync experiment
 
-With JDK 17 and Android SDK 36, run the checks and build a debug APK.
+<p align="center">
+  <a href="screenshots/0.8.0/glyph-sync.png"><img src="screenshots/0.8.0/glyph-sync.png" width="220" alt="Glyph Sync screen showing the Scanner animation preview and matrix brightness"></a>
+</p>
+
+On Nothing Phone (3), Glyph Sync can show the last letter or digit with Sparks, or play Pulse or Scanner while you type. The Glyph tab includes brightness and animation previews. This feature is available in a local experimental build with Nothing’s Glyph Matrix SDK. [Glyph Sync build instructions](docs/BUILD.md#glyph-sync-на-nothing-phone-3)
+
+## Build and contribute
+
+With JDK 17 and Android SDK 36, run the tests and build a debug APK.
 
 ```sh
 bash ./gradlew testDebugUnitTest :swipe-research:test lintDebug assembleDebug
 ```
 
-On Windows, run the same tasks with `gradlew.bat`. See the [build guide](docs/BUILD.md) for SDK setup.
+On Windows, run the same tasks with `gradlew.bat`. [Build guide](docs/BUILD.md) · [Report an issue](https://github.com/CVRSPOTTED/nothing-type/issues) · [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md)
 
-| Path | Contents |
-| --- | --- |
-| `app/` | Android app, keyboard and tests |
-| `swipe-research/` | Experimental swipe decoder |
-| `docs/` | Build, testing and release guides |
-
-[Report an issue](https://github.com/CVRSPOTTED/nothing-type/issues) · [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Third-party licenses](THIRD_PARTY.md)
-
-The app code uses the [MIT license](LICENSE). The bundled word lists use [CC BY-SA 4.0](app/src/main/assets/dictionaries/SOURCE.md).
+The app code uses the [MIT license](LICENSE). The word lists are licensed under [CC BY-SA 4.0](app/src/main/assets/dictionaries/SOURCE.md). [Third-party licenses](THIRD_PARTY.md)
