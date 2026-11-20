@@ -5,7 +5,7 @@
 <p align="center">An open-source Android keyboard inspired by Nothing OS.</p>
 
 <p align="center">
-  <a href="https://github.com/CVRSPOTTED/nothing-type/releases/download/v0.7.0/nothing-type-0.7.0.apk"><strong>Download APK 0.7.0</strong></a> ·
+  <a href="https://github.com/CVRSPOTTED/nothing-type/releases/download/v0.8.0/nothing-type-0.8.0.apk"><strong>Download APK 0.8.0</strong></a> ·
   <a href="https://github.com/CVRSPOTTED/nothing-type/releases">All releases</a> ·
   <a href="README.ru.md">Русский</a>
 </p>
@@ -43,7 +43,7 @@
 
 ## Install
 
-1. Download and install the [signed APK](https://github.com/CVRSPOTTED/nothing-type/releases/tag/v0.7.0). The minimum OS version is Android 8.0.
+1. Download and install the [signed APK](https://github.com/CVRSPOTTED/nothing-type/releases/tag/v0.8.0). The minimum OS version is Android 8.0.
 2. Open Nothing Type. On **Enable**, turn on the keyboard in Android settings, then select it as your input method.
 3. Use **Settings** for languages and typing, and **Style** for appearance. Tap **Try typing** to test your changes.
 
