@@ -1,5 +1,14 @@
 # История изменений
 
+## 0.8.0
+
+- Added an Italian app locale, keyboard layout, and 10,000-entry offline dictionary.
+- Added NP2(a)SE alongside Dark and Light, with theme-based, red, yellow and purple accents for Enter and Backspace.
+- Redesigned the app navigation and alternate-character menus. Added a globe key for switching layouts.
+- Simplified Ndot font import from ZIP, TTF and OTF and added bilingual setup guides and FAQs.
+- Expanded dictation and editor checks, including faster typing and multilingual suggestions.
+- Added an experimental, local Glyph Sync build for Phone (3) with sparks, typing animations and adjustable brightness.
+
 ## 0.7.0
 
 - Восемь языков интерфейса и клавиатуры. Язык приложения можно выбрать при первом запуске или в настройках.

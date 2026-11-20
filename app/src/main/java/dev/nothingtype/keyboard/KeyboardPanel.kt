@@ -3,11 +3,15 @@ package dev.nothingtype.keyboard
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Rect
+import android.graphics.drawable.InsetDrawable
 import android.graphics.drawable.StateListDrawable
+import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.PopupWindow
 import dev.nothingtype.R
 import dev.nothingtype.settings.KeyboardFonts
 import dev.nothingtype.settings.LanguageSwitch
@@ -50,6 +54,7 @@ class KeyboardPanel(
     private var voiceStatus = context.getString(R.string.voice_idle)
     private var ambientDrawable: AmbientDrawable? = null
     private var lastTypingKey: InstantKey? = null
+    private var alternativesPopup: PopupWindow? = null
     private val typingRows = mutableListOf<LinearLayout>()
     private val touchRouter = KeyboardTouchRouter(this, ::keyAt) { lastTypingKey?.confirmPendingTap() }
 
@@ -94,16 +99,16 @@ class KeyboardPanel(
                     description: String = text, immediate: Boolean = false, typing: Boolean = immediate,
                     onPress: () -> Unit): InstantKey {
         val theme = prefs.palette
-        val redEnter = accent && prefs.redEnter
+        val accentColor = if (accent) prefs.keyboardAccent.color else null
         val fill = when {
-            redEnter -> 0xFFD72D28.toInt()
+            accentColor != null -> accentColor
             accent -> theme.accent
             prefs.ambient -> (theme.key and 0x00FFFFFF) or 0xD9000000.toInt()
             else -> theme.key
         }
         val ink = when {
-            redEnter || (accent && theme == Palette.LIGHT) -> android.graphics.Color.WHITE
-            accent -> android.graphics.Color.BLACK
+            accentColor != null -> prefs.keyboardAccent.ink
+            accent -> theme.accentInk
             else -> theme.ink
         }
         val button = context.action(text, fill, ink, prefs.radius)
@@ -132,8 +137,7 @@ class KeyboardPanel(
     }
 
     private fun highlight(button: Button) {
-        val fill = if (prefs.palette == Palette.LIGHT) 0xFFD0D0CE.toInt() else 0xFF484848.toInt()
-        button.background = keyBackground(fill)
+        button.background = keyBackground(prefs.palette.functionKey)
     }
 
     private fun keyBackground(fill: Int): StateListDrawable {
@@ -207,30 +211,68 @@ class KeyboardPanel(
     private fun addAlternatives(button: InstantKey, values: List<String>) {
         if (values.isEmpty()) return
         button.setOnLongClickListener {
-            android.widget.PopupMenu(context, button).apply {
-                                values.forEach { value ->
-                    menu.add(if (state.language != Language.CUSTOM && state.shift) state.upper(value) else value)
-                }
-                setOnMenuItemClickListener {
-                    state.afterCommit()
-                    commit(it.title.toString())
-                    updateCase()
-                    true
-                }
-                show()
-            }
+            showAlternatives(button, values)
             true
         }
     }
 
+    private fun showAlternatives(anchor: InstantKey, values: List<String>) {
+        if (!anchor.isAttachedToWindow) return
+        alternativesPopup?.dismiss()
+        val theme = prefs.palette
+        val padding = context.dp(6)
+        val cellSize = context.dp(48)
+        val columns = ((width - 2 * padding) / cellSize).coerceIn(1, values.size)
+        val choices = values.chunked(columns)
+        val popupWidth = columns * cellSize + 2 * padding
+        val popupHeight = choices.size * cellSize + 2 * padding
+        val radius = maxOf(16, prefs.radius)
+        val surface = LinearLayout(context).apply {
+            orientation = VERTICAL
+            setPadding(padding, padding, padding, padding)
+        }
+        val popup = PopupWindow(surface, popupWidth, popupHeight, true).apply {
+            setBackgroundDrawable(rounded(theme.canvas, context.dp(radius).toFloat()).apply {
+                setStroke(context.dp(1), theme.functionKey)
+            })
+            elevation = context.dp(6).toFloat()
+            inputMethodMode = PopupWindow.INPUT_METHOD_NOT_NEEDED
+            isOutsideTouchable = true
+            setOnDismissListener { alternativesPopup = null }
+        }
+        choices.forEach { options ->
+            val line = LinearLayout(context).apply { gravity = Gravity.CENTER }
+            options.forEach { alternative ->
+                val value = if (state.language != Language.CUSTOM && state.shift) state.upper(alternative) else alternative
+                val option = context.action(value, theme.key, theme.ink, radius / 2).apply {
+                    textSize = 19f
+                    setAutoSizeTextTypeUniformWithConfiguration(12, 19, 1, android.util.TypedValue.COMPLEX_UNIT_SP)
+                    background = InsetDrawable(background, context.dp(2))
+                    setOnClickListener {
+                        popup.dismiss()
+                        state.afterCommit()
+                        commit(value)
+                        updateCase()
+                    }
+                }
+                line.addView(option, LayoutParams(cellSize, cellSize))
+            }
+            surface.addView(line, LayoutParams(LayoutParams.MATCH_PARENT, cellSize))
+        }
+        val anchorBounds = Rect(0, 0, anchor.width, anchor.height)
+        offsetDescendantRectToMyCoords(anchor, anchorBounds)
+        val left = (anchorBounds.centerX() - popupWidth / 2).coerceIn(0, maxOf(0, width - popupWidth))
+        alternativesPopup = popup
+        popup.showAsDropDown(anchor, left - anchorBounds.left, -anchor.height - popupHeight - context.dp(6), Gravity.START)
+    }
+
     private fun addDeleteKey(line: LinearLayout) {
-        key(line, "⌫", 1.2f, description = context.getString(R.string.delete_character), immediate = true) {
+        key(line, "⌫", 1.2f, accent = true, description = context.getString(R.string.delete_character), immediate = true) {
             command(Command.DELETE)
         }.apply {
             repeatDelete = true
-            highlight(this)
             iconSizeDp = 28
-            toolbarIcon = context.getDrawable(R.drawable.key_backspace)?.mutate()?.apply { setTint(prefs.palette.ink) }
+            toolbarIcon = context.getDrawable(R.drawable.key_backspace)?.mutate()?.apply { setTint(currentTextColor) }
         }
     }
 
@@ -263,7 +305,8 @@ class KeyboardPanel(
             contentDescription = context.getString(R.string.voice_status, status)
             isActivated = status != context.getString(R.string.voice_idle)
             (this as InstantKey).toolbarIcon?.setTint(
-                if (status == context.getString(R.string.voice_idle)) prefs.palette.ink else prefs.palette.accent)
+                if (status == context.getString(R.string.voice_idle)) prefs.palette.ink
+                else prefs.keyboardAccent.color ?: prefs.palette.voiceAccent)
             invalidate()
         }
         updateSuggestions(cachedCandidates)
@@ -299,7 +342,19 @@ class KeyboardPanel(
             state.shift -> R.string.shift_active
             else -> R.string.shift_help
         })
-        button.toolbarIcon = context.getDrawable(icon)?.mutate()?.apply { setTint(prefs.palette.ink) }
+        val customAccent = prefs.keyboardAccent
+        val accentColor = if (state.shift || state.capsLock) {
+            customAccent.color ?: prefs.palette.shiftAccent
+        } else null
+        if (accentColor != null) button.background = keyBackground(accentColor) else highlight(button)
+        button.toolbarIcon = context.getDrawable(icon)?.mutate()?.apply {
+            val ink = when {
+                accentColor == null -> prefs.palette.ink
+                customAccent.color != null -> customAccent.ink
+                else -> Color.WHITE
+            }
+            setTint(ink)
+        }
         button.invalidate()
     }
     private fun effectVisibility() {
@@ -307,6 +362,7 @@ class KeyboardPanel(
     }
     override fun onAttachedToWindow() { super.onAttachedToWindow(); effectVisibility() }
     override fun onDetachedFromWindow() {
+        alternativesPopup?.dismiss()
         touchRouter.cancel()
         ambientDrawable?.running = false
         super.onDetachedFromWindow()
@@ -315,6 +371,7 @@ class KeyboardPanel(
     override fun onVisibilityChanged(changedView: android.view.View, visibility: Int) { super.onVisibilityChanged(changedView, visibility); effectVisibility() }
 
     fun render() {
+        alternativesPopup?.dismiss()
         touchRouter.cancel()
         typingRows.clear()
         lastTypingKey = null
@@ -357,6 +414,7 @@ class KeyboardPanel(
                 setPadding(context.dp(8), 0, context.dp(8), 0)
             }.also { listening.addView(it, LayoutParams(0, context.dp(54), 4f)) }
             tool(listening, R.drawable.tool_mic, context.getString(R.string.voice_stop)) { command(Command.VOICE) }
+                .toolbarIcon?.setTint(prefs.keyboardAccent.color ?: prefs.palette.voiceAccent)
         }
         if (prefs.suggestions && !sensitive && !numeric && state.layer != Layer.EMOJI) {
             val candidates = row().also { candidatesRow = it }
@@ -388,7 +446,6 @@ class KeyboardPanel(
                 shiftButton = key(line, "↑", 1.3f, typing = true) {
                     state.toggleShift(); updateCase()
                 }.apply {
-                    highlight(this)
                     iconSizeDp = 28
                     setOnLongClickListener { state.lockCaps(); updateCase(); true }
                 }
@@ -433,11 +490,11 @@ class KeyboardPanel(
         val languageButton = canSwitch && prefs.languageSwitch == LanguageSwitch.BUTTON
         if (languageButton) {
             val next = enabled[(enabled.indexOf(state.language) + 1) % enabled.size]
-            val abbreviation = if (state.language == Language.CUSTOM) state.languageTag.substringBefore('-').uppercase()
-                else state.language.name
-            key(bottom, abbreviation, 0.9f,
+            key(bottom, "", 0.9f,
                 description = context.getString(R.string.switch_to_language, prefs.layoutTitle(next)),
-                immediate = true) { changeLanguage(next) }
+                immediate = true) { changeLanguage(next) }.apply {
+                toolbarIcon = context.getDrawable(R.drawable.key_globe)?.mutate()?.apply { setTint(currentTextColor) }
+            }
         }
         val spaceDescription = if (canSwitch && !languageButton)
             context.getString(R.string.space_language_help, state.layoutTitle)

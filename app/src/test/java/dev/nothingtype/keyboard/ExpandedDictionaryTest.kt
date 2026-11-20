@@ -36,7 +36,8 @@ class ExpandedDictionaryTest {
             Triple(Language.HI, "नममस्ते", "नमस्ते"),
             Triple(Language.AR, "مررحبا", "مرحبا"),
             Triple(Language.TR, "merhaaba", "merhaba"),
-            Triple(Language.ES, "graacias", "gracias")
+            Triple(Language.ES, "graacias", "gracias"),
+            Triple(Language.IT, "grazzie", "grazie")
         )
         for ((language, typo, word) in examples) {
             val name = language.name.lowercase(java.util.Locale.ROOT)
@@ -49,6 +50,19 @@ class ExpandedDictionaryTest {
         }
     }
 
+    @Test fun italianLayoutKeepsAccentsAndCaseAcrossLanguageSwitches() {
+        val state = KeyboardState(Language.IT)
+        assertTrue("è" in state.rows().flatten())
+        assertTrue("à" in state.rows().flatten())
+        state.toggleShift()
+        assertTrue("È" in state.rows().flatten())
+        state.toggleLanguage(listOf(Language.IT, Language.EN))
+        assertEquals(Language.EN, state.language)
+        state.toggleLanguage(listOf(Language.IT, Language.EN))
+        assertEquals("it-IT", state.languageTag)
+        assertTrue(WordText.isWord("perché", Language.IT))
+        assertTrue(WordText.isWord("l’amico", Language.IT))
+    }
     @Test fun acceptsCombiningMarksAndUsesTurkishCasing() {
         assertFalse(WordText.canAppend("ा", Language.HI, null))
         assertTrue(WordText.canAppend("ा", Language.HI, 'क'))

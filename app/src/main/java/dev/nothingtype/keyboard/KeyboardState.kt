@@ -48,6 +48,7 @@ class KeyboardState(var language: Language = Language.EN) {
             Language.DE -> listOf("qwertzuiopü", "asdfghjklöä", "yxcvbnmß")
             Language.TR -> listOf("qwertyuıopğü", "asdfghjklşi", "zxcvbnmöç")
             Language.ES -> listOf("qwertyuiop", "asdfghjklñ", "zxcvbnm")
+            Language.IT -> listOf("qwertyuiopè", "asdfghjklà", "zxcvbnm")
             else -> listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
         }
         return rows.map { row -> row.map { char -> if (shift) upper(char.toString()) else char.toString() } }

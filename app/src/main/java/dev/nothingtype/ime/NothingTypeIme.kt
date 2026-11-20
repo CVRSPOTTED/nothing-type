@@ -43,6 +43,8 @@ open class NothingTypeIme : InputMethodService() {
     private var undoCorrection: Correction? = null
     private var keepOriginal = false
     private var allowSuggestions = false
+    private var glyphSync: GlyphSync? = null
+    private var glyphSessionActive = false
     private var allowAutocorrect = false
     private var compositionSupported = true
     private var capsMode = 0
@@ -74,6 +76,7 @@ open class NothingTypeIme : InputMethodService() {
     override fun onCreateInputView(): View = panel()
 
     override fun onStartInput(info: EditorInfo, restarting: Boolean) {
+        stopGlyphSync()
         super.onStartInput(info, restarting)
         capsRequest++
         recentTyping = ""
@@ -133,6 +136,31 @@ open class NothingTypeIme : InputMethodService() {
         super.onStartInputView(info, restarting)
         state.language = prefs.language
         setInputView(panel())
+        syncGlyphPreference(viewShown = true)
+    }
+
+    private fun syncGlyphPreference(viewShown: Boolean = isInputViewShown): GlyphSync? {
+        if (!viewShown || !allowSuggestions || !GlyphSync.isAvailable || !prefs.glyphSync) {
+            stopGlyphSync()
+            return null
+        }
+        val sync = glyphSync ?: createGlyphSync(this).also { glyphSync = it }
+        if (!glyphSessionActive) {
+            glyphSessionActive = true
+            sync.start()
+        }
+        return sync
+    }
+
+    private fun stopGlyphSync() {
+        if (!glyphSessionActive) return
+        glyphSessionActive = false
+        glyphSync?.clear()
+    }
+
+    override fun onWindowHidden() {
+        stopGlyphSync()
+        super.onWindowHidden()
     }
 
     override fun onCurrentInputMethodSubtypeChanged(newSubtype: InputMethodSubtype?) {
@@ -244,6 +272,11 @@ open class NothingTypeIme : InputMethodService() {
             }
         }
         updateCapsAfterTyping(text)
+        syncGlyphPreference()?.let { sync ->
+            val editor = currentInputEditorInfo
+            val preview = editor?.packageName == packageName && editor.privateImeOptions == GlyphSync.PREVIEW_EDITOR
+            sync.show(text, preview)
+        }
     }
     private fun commitWord(separator: String) {
         val original = composing.toString()
@@ -323,15 +356,18 @@ open class NothingTypeIme : InputMethodService() {
         refreshCapsFromEditor()
     }
     override fun onFinishInputView(finishingInput: Boolean) {
+        stopGlyphSync()
         capsRequest++; recentTyping = ""; stopVoice(); finishWord()
         super.onFinishInputView(finishingInput)
     }
     override fun onFinishInput() {
+        stopGlyphSync()
         capsRequest++; recentTyping = ""; stopVoice(); undoCorrection = null; keepOriginal = false
         composing.clear(); keyboard?.updateSuggestions(emptyList())
         super.onFinishInput()
     }
     override fun onDestroy() {
+        glyphSync?.dispose()
         destroyed = true; dictionaryRequest++; capsRequest++
         mainHandler.removeCallbacksAndMessages(null)
         capsExecutor.shutdownNow()

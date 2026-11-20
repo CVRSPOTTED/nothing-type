@@ -17,4 +17,5 @@ signing.properties
 
 *.apk
 *.aab
+glyph-matrix-sdk-*.aar
 app/release/

@@ -41,13 +41,7 @@ internal object KeyboardFonts {
     }
 
     fun importNdot(context: Context, uri: Uri) {
-        val data = requireNotNull(context.contentResolver.openInputStream(uri)).use { source ->
-            val buffered = BufferedInputStream(source)
-            buffered.mark(2)
-            val zip = buffered.read() == 0x50 && buffered.read() == 0x4b
-            buffered.reset()
-            if (zip) readArchive(buffered) else readBounded(buffered, MAX_BYTES)
-        }
+        val data = requireNotNull(context.contentResolver.openInputStream(uri)).use(::readFont)
         val temporary = File.createTempFile("ndot-", ".font", context.filesDir)
         try {
             temporary.writeBytes(data)
@@ -62,12 +56,23 @@ internal object KeyboardFonts {
         }
     }
 
+    internal fun readFont(source: InputStream): ByteArray {
+        val buffered = BufferedInputStream(source)
+        buffered.mark(2)
+        val zip = buffered.read() == 0x50 && buffered.read() == 0x4b
+        buffered.reset()
+        return if (zip) readArchive(buffered) else readBounded(buffered, MAX_BYTES)
+    }
+
     private fun readArchive(input: InputStream): ByteArray = ZipInputStream(input).use { zip ->
         var remaining = MAX_BYTES
         repeat(64) {
             val entry = zip.nextEntry ?: error("No font in ZIP")
             val data = readBounded(zip, remaining)
-            if (!entry.isDirectory && entry.name.substringAfterLast('.').lowercase() in setOf("ttf", "otf")) {
+            val path = entry.name.split('/')
+            val name = path.last()
+            val isFont = name.substringAfterLast('.').lowercase() in setOf("ttf", "otf")
+            if (!entry.isDirectory && isFont && "__MACOSX" !in path && !name.startsWith("._")) {
                 return@use data
             }
             remaining -= data.size

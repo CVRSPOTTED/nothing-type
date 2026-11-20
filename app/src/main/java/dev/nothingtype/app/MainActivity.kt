@@ -4,16 +4,25 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
+import android.os.Build
+import android.view.Gravity
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
+import dev.nothingtype.ime.GlyphSync
 import dev.nothingtype.ime.VoicePermissionActivity
 import dev.nothingtype.keyboard.KlcLayout
 import dev.nothingtype.keyboard.Language
 import dev.nothingtype.R
 import dev.nothingtype.BuildConfig
+import dev.nothingtype.settings.GlyphBrightness
+import dev.nothingtype.settings.GlyphEffect
+import dev.nothingtype.settings.GlyphMode
+import dev.nothingtype.settings.KeyboardAccent
 import dev.nothingtype.settings.KeyboardFont
 import dev.nothingtype.settings.KeyboardFonts
 import dev.nothingtype.settings.LanguageSwitch
@@ -33,7 +42,8 @@ class MainActivity : Activity() {
     private enum class Tab(val title: Int, val icon: Int) {
         SETUP(R.string.tab_setup, R.drawable.dock_setup),
         SETTINGS(R.string.tab_settings, R.drawable.tool_settings),
-        STYLE(R.string.tab_style, R.drawable.dock_style)
+        STYLE(R.string.tab_style, R.drawable.dock_style),
+        GLYPH(R.string.tab_glyph, R.drawable.dock_glyph)
     }
 
     private lateinit var root: FrameLayout
@@ -49,15 +59,17 @@ class MainActivity : Activity() {
     private var ndotHint: TextView? = null
     private var status: TextView? = null
     private var activationButton: Button? = null
+    private var keyboardPickerButton: Button? = null
+    private var setupHint: TextView? = null
+    private var glyphTestEditor: EditText? = null
     private var appLanguageButton: Button? = null
     private var offerAppLanguage = false
     private var languageDialog: android.app.AlertDialog? = null
     private val ink = 0xFFF2F2F2.toInt()
     private val muted = 0xFF969696.toInt()
-    private val surface = 0xFF1C1C1C.toInt()
+    private val surface = 0xFF161616.toInt()
+    private val controlSurface = 0xFF232323.toInt()
     private val canvasColor = android.graphics.Color.BLACK
-    private val accent = 0xFFC82230.toInt()
-    private val onAccent = android.graphics.Color.WHITE
 
     override fun attachBaseContext(newBase: Context) = super.attachBaseContext(AppLocales.wrap(newBase))
 
@@ -67,7 +79,7 @@ class MainActivity : Activity() {
         AppLocales.migrateLegacyChoice(this)
         offerAppLanguage = intent.action == Intent.ACTION_MAIN && AppLocales.shouldOfferOnLaunch(this)
         val savedTab = savedInstanceState?.getString("selected_tab")
-        tab = Tab.entries.firstOrNull { it.name == savedTab } ?: when {
+        tab = Tab.entries.firstOrNull { it.name == savedTab && (it != Tab.GLYPH || GlyphSync.isAvailable) } ?: when {
             savedInstanceState?.getInt("tab") == 1 -> Tab.STYLE
             intent.action == ACTION_OPEN_SETTINGS -> Tab.SETTINGS
             else -> Tab.SETUP
@@ -92,17 +104,25 @@ class MainActivity : Activity() {
         page = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(20), dp(20), dp(32)) }
         scroll.addView(page)
         layout.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        testInputButton = action(getString(R.string.test_keyboard), accent, onAccent, 20).apply {
+        testInputButton = action(getString(R.string.test_keyboard), ink, canvasColor, 26).apply {
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(24), dp(6), dp(24), dp(6))
+            minHeight = dp(48)
             setOnClickListener { showInputTest() }
         }
-        layout.addView(testInputButton, LinearLayout.LayoutParams(-1, dp(48)).apply {
+        layout.addView(testInputButton, LinearLayout.LayoutParams(-2, -2).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
             setMargins(dp(12), dp(4), dp(12), dp(4))
         })
         dock = LinearLayout(this).apply {
-            setPadding(dp(6), dp(6), dp(6), dp(6))
-            background = rounded(surface, dp(26).toFloat())
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(5), dp(5), dp(5), dp(5))
+            background = rounded(surface, dp(40).toFloat()).apply {
+                setStroke(dp(1), 0xFF323232.toInt())
+            }
         }
-        layout.addView(dock, LinearLayout.LayoutParams(-1, -2).apply {
+        layout.addView(dock, LinearLayout.LayoutParams(-2, -2).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
             setMargins(dp(12), dp(2), dp(12), dp(8))
         })
         if (android.os.Build.VERSION.SDK_INT >= 30) {
@@ -164,12 +184,34 @@ class MainActivity : Activity() {
         updateStatus()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) updateStatus()
+    }
+
+    private fun isKeyboardSelected(): Boolean =
+        Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
+            ?.startsWith("$packageName/") == true
+
     private fun updateStatus() {
+        glyphTestEditor?.visibility = if (isKeyboardSelected() && prefs.glyphSync) View.VISIBLE else View.GONE
         val label = status ?: return
         val manager = getSystemService(InputMethodManager::class.java)
         val enabled = manager.enabledInputMethodList.any { it.packageName == packageName }
         activationButton?.setText(if (enabled) R.string.disable_keyboard else R.string.enable_keyboard)
-        label.setText(if (enabled) R.string.status_enabled else R.string.status_setup)
+        val selected = enabled && isKeyboardSelected()
+        label.setText(when {
+            selected -> R.string.status_enabled
+            enabled -> R.string.status_choose_keyboard
+            else -> R.string.status_setup
+        })
+        activationButton?.showSetupPriority(!enabled)
+        keyboardPickerButton?.apply {
+            showSetupPriority(enabled && !selected)
+            isEnabled = enabled
+            alpha = if (enabled) 1f else 0.5f
+        }
+        setupHint?.visibility = if (enabled) View.GONE else View.VISIBLE
         label.setCompoundDrawablesRelativeWithIntrinsicBounds(
             if (enabled) R.drawable.keyboard_status_on else R.drawable.keyboard_status_off, 0, 0, 0
         )
@@ -181,13 +223,16 @@ class MainActivity : Activity() {
         page.gravity = if (destination == Tab.SETUP) android.view.Gravity.CENTER_VERTICAL else android.view.Gravity.TOP
         status = null
         activationButton = null
+        keyboardPickerButton = null
+        setupHint = null
+        glyphTestEditor = null
+        testInputButton.visibility = if (destination == Tab.SETTINGS || destination == Tab.STYLE) View.VISIBLE else View.GONE
         appLanguageButton = null
         ndotHint = null
         when (destination) {
             Tab.SETUP -> buildSetup()
             Tab.SETTINGS -> {
-                heading(getString(R.string.tab_settings))
-                appLanguageButton = button(page, appLanguageLabel()) { showAppLanguages() }
+                screenTitle(R.string.tab_settings)
                 buildLanguages()
                 buildPlacement()
                 buildInput()
@@ -195,34 +240,58 @@ class MainActivity : Activity() {
                 page.addView(label(getString(R.string.footer, BuildConfig.VERSION_NAME), 12f, muted))
             }
             Tab.STYLE -> buildStyle()
+            Tab.GLYPH -> {
+                screenTitle(R.string.glyph_sync)
+                buildGlyphSyncCard()
+            }
         }
-        testInputButton.visibility = if (destination == Tab.SETUP) View.GONE else View.VISIBLE
+        updateStatus()
         scroll.scrollTo(0, 0)
         updateDock()
     }
 
     private fun updateDock() {
         dock.removeAllViews()
-        Tab.entries.forEach { item ->
+        val tabs = Tab.entries.filter { it != Tab.GLYPH || GlyphSync.isAvailable }
+        val compactWidth = 48
+        val selectedWidth = (resources.configuration.screenWidthDp - 34 - compactWidth * (tabs.size - 1))
+            .coerceIn(compactWidth, 166)
+        tabs.forEach { item ->
             val current = tab == item
-            val tint = if (current) onAccent else ink
+            val tint = if (current) canvasColor else ink
+            val title = getString(item.title)
             val glyph = getDrawable(item.icon)?.mutate()?.apply { setTint(tint) }
-            dock.addView(action(getString(item.title), if (current) accent else surface, tint, 20).apply {
-                textSize = 11f
-                maxLines = 2
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                minHeight = dp(58)
-                setPadding(dp(3), dp(7), dp(3), dp(6))
-                compoundDrawablePadding = dp(4)
-                setCompoundDrawablesWithIntrinsicBounds(null, glyph, null, null)
+            dock.addView(action(if (current) title else "", if (current) ink else surface, tint, 32).apply {
+                contentDescription = title
+                typeface = Typeface.DEFAULT_BOLD
                 isSelected = current
+                minHeight = dp(48)
+                if (current) {
+                    maxWidth = dp(selectedWidth)
+                    setPadding(dp(14), dp(6), dp(14), dp(6))
+                    compoundDrawablePadding = dp(8)
+                    setCompoundDrawablesRelativeWithIntrinsicBounds(glyph, null, null, null)
+                } else {
+                    foregroundGravity = Gravity.CENTER
+                    foreground = glyph
+                }
                 setOnClickListener { if (tab != item) showTab(item) }
-            }, LinearLayout.LayoutParams(0, -1, 1f).apply {
-                setMargins(dp(2), 0, dp(2), 0)
-            })
+            }, LinearLayout.LayoutParams(if (current) -2 else dp(compactWidth), -2))
         }
     }
 
+    private fun screenTitle(title: Int) {
+        page.addView(label(getString(title), 22f, ink).apply {
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            if (Build.VERSION.SDK_INT >= 28) isAccessibilityHeading = true
+        })
+        page.gap(16)
+    }
+
+    private fun cardTitle(parent: LinearLayout, title: Int) {
+        parent.addView(label(getString(title), 14f, muted).apply { typeface = Typeface.DEFAULT_BOLD })
+    }
     private fun heading(title: String, detail: String? = null) {
         page.gap(20)
         page.addView(label(title, 23f, ink).apply { typeface = Typeface.DEFAULT_BOLD })
@@ -230,7 +299,8 @@ class MainActivity : Activity() {
     }
 
     private fun button(parent: LinearLayout, text: String, primary: Boolean = false, onClick: () -> Unit): Button {
-        val control = action(text, if (primary) accent else surface, if (primary) onAccent else ink, 28).apply {
+        val control = action(text, if (primary) ink else controlSurface, if (primary) canvasColor else ink, 28).apply {
+            typeface = Typeface.DEFAULT_BOLD
             minHeight = dp(50)
             setPadding(dp(12), dp(12), dp(12), dp(12))
             setOnClickListener { onClick() }
@@ -239,27 +309,157 @@ class MainActivity : Activity() {
         return control
     }
 
-    private fun buildSetup() {
-        page.addView(DotTitle(this, ink))
-        status = label("", 13f, ink).apply {
-            compoundDrawablePadding = dp(6)
-        }.also(page::addView)
-        activationButton = button(page, getString(R.string.enable_keyboard), true) {
-            openExternalScreen(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
-        }
-        button(page, getString(R.string.choose_keyboard)) { getSystemService(InputMethodManager::class.java).showInputMethodPicker() }
-        updateStatus()
+    private fun Button.showSetupPriority(primary: Boolean) {
+        setTextColor(if (primary) canvasColor else ink)
+        val fill = (background as? RippleDrawable)?.getDrawable(0) as? GradientDrawable
+        fill?.setColor(if (primary) ink else controlSurface)
     }
 
+    private fun buildSetup() {
+        page.addView(DotTitle(this, ink))
+        page.addView(SetupArtwork(this), LinearLayout.LayoutParams(-1, -2))
+        page.gap(18)
+        val setup = card()
+        status = label("", 16f, ink).apply {
+            typeface = Typeface.DEFAULT_BOLD
+            compoundDrawablePadding = dp(8)
+        }.also(setup::addView)
+        setupHint = label(getString(R.string.setup_enable_hint), 13f, muted).also(setup::addView)
+        setup.gap(6)
+        activationButton = button(setup, getString(R.string.enable_keyboard), true) {
+            openExternalScreen(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+        }
+        keyboardPickerButton = button(setup, getString(R.string.choose_keyboard)) {
+            getSystemService(InputMethodManager::class.java).showInputMethodPicker()
+        }
+    }
+
+    private fun buildGlyphSyncCard() {
+        val group = card()
+        toggle(getString(R.string.glyph_sync), prefs.glyphSync, group) { enabled ->
+            prefs.glyphSync = enabled
+            if (!enabled) {
+                glyphTestEditor?.let { editor ->
+                    getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(editor.windowToken, 0)
+                    editor.text.clear()
+                    editor.clearFocus()
+                }
+            }
+            updateStatus()
+        }
+        val editor = EditText(this).apply {
+            styleDialogInput()
+            setSingleLine()
+            hint = getString(R.string.test_keyboard)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            privateImeOptions = GlyphSync.PREVIEW_EDITOR
+        }
+        glyphTestEditor = editor
+        val symbolPreview = GlyphMatrixPreview(this)
+        group.addView(glyphPreviewRow(editor, symbolPreview))
+        group.gap(8)
+        group.addView(label(getString(R.string.glyph_sync_help), 12f, muted))
+
+        val modeCard = card()
+        cardTitle(modeCard, R.string.glyph_mode)
+        val modes = choiceRow()
+        modeCard.addView(modes)
+        val modeHelp = label("", 12f, muted).also(modeCard::addView)
+        slider(getString(R.string.glyph_brightness), GlyphBrightness.range.first, GlyphBrightness.range.last,
+            prefs.glyphBrightness, "%") { prefs.glyphBrightness = it }
+        val animationPreview = GlyphMatrixPreview(this)
+        val animations = buildGlyphAnimations(animationPreview)
+        fun updateInlinePreview() {
+            val show = prefs.glyphMode == GlyphMode.SYMBOLS || editor.hasFocus()
+            symbolPreview.visibility = if (show) View.VISIBLE else View.GONE
+        }
+        editor.setOnFocusChangeListener { _, _ -> updateInlinePreview() }
+        fun updateMode() {
+            val animated = prefs.glyphMode == GlyphMode.ANIMATION
+            updateInlinePreview()
+            animations.visibility = if (animated) View.VISIBLE else View.GONE
+            if (!animated) animationPreview.stopDemo()
+            modeHelp.setText(if (animated) R.string.glyph_animation_help else R.string.glyph_symbols_help)
+            updateChoices(modes, prefs.glyphMode.ordinal)
+        }
+        GlyphMode.entries.forEach { mode ->
+            modes.addView(action(getString(mode.label), controlSurface, ink, 20).apply {
+                minHeight = dp(48)
+                setPadding(dp(6), dp(8), dp(6), dp(8))
+                setOnClickListener {
+                    prefs.glyphMode = mode
+                    updateMode()
+                }
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+        }
+        updateMode()
+    }
+
+    private fun buildGlyphAnimations(preview: GlyphMatrixPreview): LinearLayout {
+        val group = card()
+        group.addView(preview, LinearLayout.LayoutParams(dp(170), dp(170)).apply {
+            gravity = Gravity.CENTER_HORIZONTAL
+            topMargin = dp(6)
+        })
+        val controls = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        val title = label("", 16f, ink).apply {
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
+        val introduction = label("", 12f, muted).apply { gravity = Gravity.CENTER }
+        val effects = GlyphEffect.animations
+        fun updateEffect() {
+            val effect = prefs.glyphAnimation
+            title.setText(effect.label)
+            introduction.setText(if (effect == GlyphEffect.PULSE) R.string.glyph_pulse_help else R.string.glyph_scanner_help)
+        }
+        fun arrow(text: String, description: Int, step: Int) = action(text, controlSurface, ink, 24).apply {
+            contentDescription = getString(description)
+            textSize = 19f
+            setOnClickListener {
+                val position = effects.indexOf(prefs.glyphAnimation)
+                prefs.glyphAnimation = effects[(position + step + effects.size) % effects.size]
+                updateEffect()
+                preview.playDemo(prefs.glyphAnimation, prefs.glyphBrightness, 1)
+            }
+        }
+        controls.addView(arrow("‹", R.string.glyph_previous_animation, -1), LinearLayout.LayoutParams(dp(48), dp(48)))
+        controls.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+        controls.addView(arrow("›", R.string.glyph_next_animation, 1), LinearLayout.LayoutParams(dp(48), dp(48)))
+        group.addView(controls)
+        group.addView(introduction)
+        val demo = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
+        for ((caption, presses) in listOf(R.string.glyph_preview_tap to 1, R.string.glyph_preview_burst to 6)) {
+            demo.addView(action(getString(caption), controlSurface, ink, 24).apply {
+                minHeight = dp(48)
+                setPadding(dp(6), dp(8), dp(6), dp(8))
+                setOnClickListener { preview.playDemo(prefs.glyphAnimation, prefs.glyphBrightness, presses) }
+            }, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
+        }
+        group.addView(demo)
+        updateEffect()
+        return group
+    }
+
+    private fun glyphPreviewRow(editor: EditText, preview: GlyphMatrixPreview = GlyphMatrixPreview(this)) =
+        LinearLayout(this).apply {
+            gravity = Gravity.CENTER
+            addView(preview, LinearLayout.LayoutParams(dp(92), dp(92)))
+            addView(editor, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(12) })
+        }
+
     private fun buildStyle() {
-        heading(getString(R.string.tab_style))
-        val fonts = LinearLayout(this)
+        screenTitle(R.string.tab_style)
+        val fontCard = card()
+        cardTitle(fontCard, R.string.keyboard_font)
+        val fonts = choiceRow()
         KeyboardFont.entries.forEach { font ->
             val installed = font != KeyboardFont.NDOT || KeyboardFonts.hasNdot(this)
             val selected = font == prefs.keyboardFont && installed
             fonts.addView(action(
                 if (!installed) "Ndot ↗" else font.title,
-                if (selected) ink else surface,
+                if (selected) ink else controlSurface,
                 if (selected) canvasColor else ink,
                 20
             ).apply {
@@ -277,15 +477,23 @@ class MainActivity : Activity() {
                 }
             }, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
         }
-        page.addView(label(getString(R.string.keyboard_font), 16f, ink))
-        page.addView(fonts)
-        ndotHint = label("", 12f, muted).also(page::addView)
+        fontCard.addView(fonts)
+        fontCard.gap(8)
+        ndotHint = label("", 12f, muted).also(fontCard::addView)
         updateNdotHint()
-        page.gap(8)
-        page.addView(label(getString(R.string.keyboard_themes), 16f, ink))
-        val themes = LinearLayout(this)
+        if (KeyboardFonts.hasNdot(this)) {
+            fontCard.gap(4)
+            button(fontCard, getString(R.string.replace_ndot)) { pickNdot() }
+        }
+        val themeCard = card()
+        cardTitle(themeCard, R.string.keyboard_themes)
+        val themes = choiceRow()
         Palette.entries.forEach { palette ->
-            val title = getString(if (palette == Palette.DARK) R.string.theme_dark else R.string.theme_light)
+            val title = getString(when (palette) {
+                Palette.DARK -> R.string.theme_dark
+                Palette.LIGHT -> R.string.theme_light
+                Palette.DESSAU -> R.string.theme_np2a_se
+            })
             themes.addView(action(title, surface, ink, 20).apply {
                 minHeight = dp(48)
                 setPadding(dp(4), dp(10), dp(4), dp(10))
@@ -296,11 +504,40 @@ class MainActivity : Activity() {
                 }
             }, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(2), 0, dp(2), 0) })
         }
-        page.addView(themes)
+        themeCard.addView(themes)
         updateChoices(themes, prefs.palette.ordinal)
-        page.gap(8)
-        toggle(getString(R.string.red_enter), prefs.redEnter) { prefs.redEnter = it }
-        page.addView(label(getString(R.string.red_enter_help), 12f, muted))
+        val accentCard = card()
+        cardTitle(accentCard, R.string.keyboard_accent)
+        val accentLabels = KeyboardAccent.entries.map { accent ->
+            getString(when (accent) {
+                KeyboardAccent.THEME -> R.string.accent_theme
+                KeyboardAccent.RED -> R.string.accent_red
+                KeyboardAccent.YELLOW -> R.string.accent_yellow
+                KeyboardAccent.PURPLE -> R.string.accent_purple
+            })
+        }.toTypedArray()
+        fun Button.showAccent(accent: KeyboardAccent) {
+            text = accentLabels[accent.ordinal]
+            val swatch = accent.color?.let { color ->
+                rounded(color, dp(8).toFloat()).apply { setBounds(0, 0, dp(16), dp(16)) }
+            }
+            compoundDrawablePadding = dp(8)
+            setCompoundDrawablesRelative(null, null, swatch, null)
+        }
+        lateinit var accentPicker: Button
+        accentPicker = button(accentCard, accentLabels[prefs.keyboardAccent.ordinal]) {
+            TypeDialogBuilder(this)
+                .setTitle(R.string.keyboard_accent)
+                .setSingleChoiceItems(accentLabels, prefs.keyboardAccent.ordinal) { dialog, index ->
+                    prefs.keyboardAccent = KeyboardAccent.entries[index]
+                    accentPicker.showAccent(prefs.keyboardAccent)
+                    dialog.dismiss()
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+        accentPicker.showAccent(prefs.keyboardAccent)
+        accentCard.addView(label(getString(R.string.keyboard_accent_help), 12f, muted))
         page.gap(12)
         slider(getString(R.string.radius), 0, 24, prefs.radius) { prefs.radius = it }
         slider(getString(R.string.character_size), 14, 24, prefs.fontSize, "sp") { prefs.fontSize = it }
@@ -334,9 +571,11 @@ class MainActivity : Activity() {
     }
 
     private fun buildLanguages() {
-        button(page, getString(R.string.keyboard_languages)) { showKeyboardLanguages() }
-        page.addView(label(getString(R.string.language_switch)))
-        val languageChoices = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val languages = card()
+        appLanguageButton = button(languages, appLanguageLabel()) { showAppLanguages() }
+        button(languages, getString(R.string.keyboard_languages)) { showKeyboardLanguages() }
+        cardTitle(languages, R.string.language_switch)
+        val languageChoices = choiceRow().apply { orientation = LinearLayout.VERTICAL }
         val languageLabels = listOf(R.string.language_switch_hold, R.string.language_switch_button)
         LanguageSwitch.entries.forEachIndexed { index, mode ->
             languageChoices.addView(action(getString(languageLabels[index]), surface, ink, 24).apply {
@@ -348,7 +587,7 @@ class MainActivity : Activity() {
                 }
             }, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
         }
-        page.addView(languageChoices)
+        languages.addView(languageChoices)
         updateChoices(languageChoices, prefs.languageSwitch.ordinal)
         if (resources.configuration.locales[0]?.language == Language.RU.locale.language) {
             toggle(getString(R.string.compact_russian), prefs.compactRussian) { prefs.compactRussian = it }
@@ -458,8 +697,7 @@ class MainActivity : Activity() {
     }
 
     private fun showInputTest() {
-        val active = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
-        if (active?.startsWith("$packageName/") != true) {
+        if (!isKeyboardSelected()) {
             TypeDialogBuilder(this)
                 .setTitle(R.string.test_keyboard_title)
                 .setMessage(R.string.test_keyboard_enable_first)
@@ -475,9 +713,11 @@ class MainActivity : Activity() {
                 android.text.InputType.TYPE_TEXT_FLAG_AUTO_CORRECT
             minLines = 2
         }
+        val showGlyphPreview = GlyphSync.isAvailable && prefs.glyphSync
+        if (showGlyphPreview) editor.privateImeOptions = GlyphSync.PREVIEW_EDITOR
         val container = FrameLayout(this).apply {
             setPadding(dp(20), dp(6), dp(20), 0)
-            addView(editor)
+            addView(if (showGlyphPreview) glyphPreviewRow(editor) else editor)
         }
         val dialog = TypeDialogBuilder(this)
             .setTitle(R.string.test_keyboard_title)
@@ -527,7 +767,7 @@ class MainActivity : Activity() {
                 setTextColor(if (selected) canvasColor else ink)
                 background = android.graphics.drawable.RippleDrawable(
                     android.content.res.ColorStateList.valueOf(0x337F7F7F),
-                    rounded(if (selected) ink else surface, dp(20).toFloat()), null
+                    rounded(if (selected) ink else controlSurface, dp(20).toFloat()), null
                 )
             }
         }
@@ -594,6 +834,11 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun choiceRow() = LinearLayout(this).apply {
+        setPadding(dp(3), dp(3), dp(3), dp(3))
+        background = rounded(controlSurface, dp(28).toFloat())
+    }
+
     private fun card() = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(16), dp(10), dp(16), dp(10))
@@ -622,8 +867,8 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(48)))
     }
 
-    private fun toggle(title: String, value: Boolean, save: (Boolean) -> Unit) {
-        card().addView(NothingSwitch(this).apply {
+    private fun toggle(title: String, value: Boolean, parent: LinearLayout = card(), save: (Boolean) -> Unit) {
+        parent.addView(NothingSwitch(this).apply {
             text = title; textSize = 16f; setTextColor(ink); isChecked = value
             setPadding(dp(2), dp(12), dp(2), dp(12)); minHeight = dp(56)
             setOnCheckedChangeListener { _, checked -> save(checked) }

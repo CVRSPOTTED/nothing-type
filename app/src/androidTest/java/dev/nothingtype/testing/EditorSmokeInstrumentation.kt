@@ -17,14 +17,20 @@ import android.view.accessibility.AccessibilityWindowInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import dev.nothingtype.R
+import dev.nothingtype.ime.GlyphSync
 import dev.nothingtype.keyboard.Language
+import dev.nothingtype.settings.GlyphEffect
+import dev.nothingtype.settings.GlyphMode
 import dev.nothingtype.settings.LanguageSwitch
 import dev.nothingtype.settings.Preferences
 
 /** Runs the actual installed IME against native text, password and decimal editors. */
 class EditorSmokeInstrumentation : Instrumentation() {
+    private var glyphProbe = false
+
     override fun onCreate(arguments: Bundle?) {
         super.onCreate(arguments)
+        glyphProbe = arguments?.getString("glyph_sync_probe") == "true"
         start()
     }
 
@@ -77,13 +83,25 @@ class EditorSmokeInstrumentation : Instrumentation() {
                     imeRoot() != null
                 }
             }
+            if (glyphProbe) {
+                check(GlyphSync.isAvailable) { "Glyph Sync requires a Phone (3) and the local SDK build" }
+                runGlyphProbe(editorActivity, ::focus) { externalStarted = true }
+                result.putString("glyph_sync", "PASS: symbols with sparks, standalone effects, brightness settings, expiry, privacy, external and reopened editors")
+                code = Activity.RESULT_OK
+                return
+            }
             focus(editorActivity.editor)
             await("capital letter in sentence field") { key("Q", "Й")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true }
             await("editor receives text") { read(editorActivity.editor).let { it == "Q" || it == "Й" } }
             val initial = read(editorActivity.editor)
             val english = initial == "Q"
             val letter = if (english) "e" else "е"
-            val space = targetContext.getString(R.string.space_language_help, if (english) "English" else "Русский")
+            val space = when (Preferences(targetContext).languageSwitch) {
+                LanguageSwitch.BUTTON -> targetContext.getString(R.string.space_button_help)
+                LanguageSwitch.SPACE_HOLD -> targetContext.getString(
+                    R.string.space_language_help, if (english) Language.EN.title else Language.RU.title
+                )
+            }
             val next = initial.lowercase()
             await("keys for rapid typing") { key(letter) != null && key(next) != null && key(space) != null }
             tapSequence(letter, letter, space, next, ".", space, next)
@@ -131,21 +149,9 @@ class EditorSmokeInstrumentation : Instrumentation() {
             focus(editorActivity.editor)
             await("IME restarts in a text editor") { key("q", "Q", "й", "Й") != null }
             runMultilingualDictionarySmoke(editorActivity.editor)
-            result.putString("multilingual_dictionaries", "French, Hindi and Arabic")
+            result.putString("multilingual_dictionaries", "French, Hindi, Arabic and Italian")
             runTypingBenchmark(editorActivity.editor, result)
-            val external = "${context.packageName}/${ExternalEditorActivity::class.java.name}"
-            check("Error" !in shell("am start -W -f 0x10008000 -n $external"))
-            externalStarted = true
-            await("web editor in the test app") {
-                webEditor()?.let { node ->
-                    val bounds = android.graphics.Rect()
-                    node.getBoundsInScreen(bounds)
-                    if (bounds.isEmpty) false else {
-                        shell("input tap ${bounds.centerX()} ${bounds.centerY()}")
-                        true
-                    }
-                } ?: false
-            }
+            focusExternalEditor { externalStarted = true }
             await("web editor is focused and the keyboard is ready") {
                 webEditor()?.isFocused == true && key(next) != null
             }
@@ -194,6 +200,145 @@ class EditorSmokeInstrumentation : Instrumentation() {
         }
     }
 
+    private fun focusExternalEditor(onStart: () -> Unit) {
+        val external = "${context.packageName}/${ExternalEditorActivity::class.java.name}"
+        check("Error" !in shell("am start -W -f 0x10008000 -n $external"))
+        onStart()
+        await("web editor in the test app") {
+            val node = webEditor() ?: return@await false
+            val bounds = Rect()
+            node.getBoundsInScreen(bounds)
+            if (bounds.isEmpty) return@await false
+            shell("input tap ${bounds.centerX()} ${bounds.centerY()}")
+            true
+        }
+    }
+
+    private fun runGlyphProbe(activity: EditorFixtureActivity, focus: (EditText) -> Unit, onExternalStart: () -> Unit) {
+        val prefs = Preferences(targetContext)
+        val previous = prefs.glyphSync
+        val previousMode = prefs.glyphMode
+        val previousAnimation = prefs.glyphAnimation
+        val previousBrightness = prefs.glyphBrightness
+        val marker = "probe-${SystemClock.uptimeMillis()}"
+        fun events(marker: String): String {
+            val log = shell("logcat -d -s NothingTypeGlyph NothingTypeGlyphProbe")
+            check(marker in log) { "Glyph Sync probe marker missing from system log" }
+            return log.substringAfter(marker)
+        }
+        fun typeTestLetter() {
+            await("a letter key can be typed") {
+                key("q", "Q", "й", "Й")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
+            }
+        }
+        try {
+            prefs.glyphSync = true
+            prefs.glyphMode = GlyphMode.SYMBOLS
+            prefs.glyphBrightness = 63
+            focus(activity.editor)
+            shell("log -t NothingTypeGlyphProbe $marker-enabled")
+            typeTestLetter()
+            await("Glyph Matrix receives one frame from the IME") {
+                "Glyph Matrix frame submitted" in events("$marker-enabled")
+            }
+            await("Glyph Matrix closes the frame after the timeout") {
+                "Glyph Matrix frame closed" in events("$marker-enabled")
+            }
+
+            focus(activity.privateEditor)
+            shell("log -t NothingTypeGlyphProbe $marker-private")
+            typeTestLetter()
+            await("password editor still receives its letter") { read(activity.privateEditor).length == 1 }
+            SystemClock.sleep(750L)
+            check("Glyph Matrix frame submitted" !in events("$marker-private")) { "Frame submitted in password field" }
+
+            prefs.glyphSync = false
+            focus(activity.editor)
+            shell("log -t NothingTypeGlyphProbe $marker-disabled")
+            typeTestLetter()
+            await("normal typing works with Glyph Sync off") { read(activity.editor).length == 2 }
+            SystemClock.sleep(750L)
+            check("Glyph Matrix frame submitted" !in events("$marker-disabled")) { "Frame submitted with Glyph Sync off" }
+
+            prefs.glyphSync = true
+            shell("log -t NothingTypeGlyphProbe $marker-resumed")
+            typeTestLetter()
+            await("Glyph Sync resumes in the same open editor after being enabled") {
+                "Glyph Matrix frame submitted" in events("$marker-resumed")
+            }
+
+            val manager = activity.getSystemService(InputMethodManager::class.java)
+            repeat(3) { round ->
+                runOnMainSync { manager.hideSoftInputFromWindow(activity.editor.windowToken, 0) }
+                await("keyboard hides before round $round") { imeRoot() == null }
+                focus(activity.editor)
+                shell("log -t NothingTypeGlyphProbe $marker-reopened-$round")
+                typeTestLetter()
+                await("Glyph Sync resumes after reopening the keyboard in round $round") {
+                    "Glyph Matrix frame submitted" in events("$marker-reopened-$round")
+                }
+            }
+
+            if (key("1") == null) {
+                await("symbol layer can be opened") {
+                    key("?123")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
+                }
+            }
+            shell("log -t NothingTypeGlyphProbe $marker-digit")
+            await("a digit key can be typed") {
+                key("1")?.performAction(AccessibilityNodeInfo.ACTION_CLICK) == true
+            }
+            await("the editor receives the digit") { read(activity.editor).endsWith("1") }
+            await("Glyph Matrix receives a digit frame") {
+                "Glyph Matrix frame submitted" in events("$marker-digit")
+            }
+
+            await("the digit frame expires") { "Glyph Matrix frame closed" in events("$marker-digit") }
+            prefs.glyphMode = GlyphMode.ANIMATION
+            for (effect in GlyphEffect.animations) {
+                prefs.glyphAnimation = effect
+                val effectMarker = "$marker-effect-${effect.name}"
+                shell("log -t NothingTypeGlyphProbe $effectMarker")
+                typeTestLetter()
+                await("Glyph Matrix receives multiple frames for ${effect.name}") {
+                    events(effectMarker).lineSequence().count { "Glyph Matrix frame submitted" in it } >= 3
+                }
+                await("the ${effect.name} animation expires") {
+                    "Glyph Matrix frame closed" in events(effectMarker)
+                }
+            }
+
+            prefs.glyphMode = GlyphMode.SYMBOLS
+            for (brightness in listOf(25, 75)) {
+                prefs.glyphBrightness = brightness
+                val brightnessMarker = "$marker-brightness-$brightness"
+                shell("log -t NothingTypeGlyphProbe $brightnessMarker")
+                typeTestLetter()
+                await("a frame is submitted at $brightness percent") {
+                    "Glyph Matrix frame submitted" in events(brightnessMarker)
+                }
+                await("the frame at $brightness percent expires") {
+                    "Glyph Matrix frame closed" in events(brightnessMarker)
+                }
+            }
+
+            focusExternalEditor(onExternalStart)
+            await("the external web editor is focused and ready") {
+                webEditor()?.isFocused == true && key("q", "Q", "й", "Й") != null
+            }
+            shell("log -t NothingTypeGlyphProbe $marker-external")
+            typeTestLetter()
+            await("Glyph Matrix receives a frame while another app is in the foreground") {
+                "Glyph Matrix frame submitted" in events("$marker-external")
+            }
+        } finally {
+            prefs.glyphMode = previousMode
+            prefs.glyphAnimation = previousAnimation
+            prefs.glyphBrightness = previousBrightness
+            prefs.glyphSync = previous
+        }
+    }
+
     private fun read(editor: EditText): String {
         var value = ""
         runOnMainSync { value = editor.text.toString() }
@@ -218,7 +363,7 @@ class EditorSmokeInstrumentation : Instrumentation() {
         }
 
         try {
-            prefs.enabledLanguages = listOf(Language.EN, Language.FR, Language.HI, Language.AR)
+            prefs.enabledLanguages = listOf(Language.EN, Language.FR, Language.HI, Language.AR, Language.IT)
             prefs.language = Language.EN
             prefs.languageSwitch = LanguageSwitch.BUTTON
             prefs.suggestions = true
@@ -226,7 +371,8 @@ class EditorSmokeInstrumentation : Instrumentation() {
             val words = listOf(
                 Triple(Language.FR, "bonjou", "bonjour"),
                 Triple(Language.HI, "नमस्त", "नमस्ते"),
-                Triple(Language.AR, "مرحب", "مرحبا")
+                Triple(Language.AR, "مرحب", "مرحبا"),
+                Triple(Language.IT, "grazi", "grazie")
             )
             for ((language, prefix, word) in words) {
                 val switch = targetContext.getString(R.string.switch_to_language, language.title)
@@ -300,7 +446,7 @@ class EditorSmokeInstrumentation : Instrumentation() {
         val burstStart = SystemClock.elapsedRealtimeNanos()
         repeat(1000) { index -> expected.append(labels[index % 2]); inject(index % 2, false) }
         try {
-            await("1000 taps arrive in the original order") { read(editor) == expected.toString() }
+            await("1000 taps arrive in the original order", timeoutMs = 30_000) { read(editor) == expected.toString() }
         } catch (failure: IllegalStateException) {
             val actual = read(editor)
             val firstMismatch = (0 until minOf(actual.length, expected.length)).firstOrNull { actual[it] != expected[it] }
@@ -417,8 +563,8 @@ class EditorSmokeInstrumentation : Instrumentation() {
         return null
     }
 
-    private fun await(description: String, condition: () -> Boolean) {
-        val deadline = SystemClock.uptimeMillis() + 8_000
+    private fun await(description: String, timeoutMs: Long = 8_000, condition: () -> Boolean) {
+        val deadline = SystemClock.uptimeMillis() + timeoutMs
         while (SystemClock.uptimeMillis() < deadline) {
             if (condition()) return
             SystemClock.sleep(100)

@@ -121,6 +121,26 @@ class DictationTest {
         assertFalse(ime.words.contains("поздний результат"))
         ime.onDestroy()
     }
+    @Test fun switchingToAPasswordFieldCancelsDictationAndIgnoresLateResults() {
+        val ime = Robolectric.buildService(EditorIme::class.java).create().get()
+        shadowOf(ime.application).grantPermissions(Manifest.permission.RECORD_AUDIO)
+        ShadowSpeechRecognizer.setIsOnDeviceRecognitionAvailable(true)
+        ime.onStartInput(EditorInfo().apply { inputType = InputType.TYPE_CLASS_TEXT }, false)
+        requireNotNull(microphone(ime.onCreateInputView())).performClick()
+        shadowOf(Looper.getMainLooper()).idle()
+        val speech = Shadow.extract<ShadowSpeechRecognizer>(ShadowSpeechRecognizer.getLatestSpeechRecognizer())
+
+        ime.onStartInput(EditorInfo().apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }, false)
+        assertTrue(speech.isDestroyed)
+        assertNull(microphone(ime.onCreateInputView()))
+        speech.triggerOnResults(Bundle().apply {
+            putStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION, arrayListOf("late speech"))
+        })
+        assertTrue(ime.words.isEmpty())
+        ime.onDestroy()
+    }
     @Test fun offlineOnlyNeverFallsBackToTheSystemRecognizer() {
         val ime = Robolectric.buildService(EditorIme::class.java).create().get()
         dev.nothingtype.settings.Preferences(ime).offlineVoiceOnly = true

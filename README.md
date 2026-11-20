@@ -22,9 +22,9 @@
 
 ### Typing and languages
 
-- Eight app languages and keyboard layouts covering English, Russian, French, German, Hindi, Arabic, Turkish and Spanish.
+- Nine app languages and keyboard layouts, including Italian. The others are English, Russian, French, German, Hindi, Arabic, Turkish and Spanish.
 - Offline suggestions and autocorrect with 10,000 dictionary entries per built-in layout. Add your own words and undo a correction with Backspace.
-- Switch languages by holding Space or tapping a dedicated key. Import a KLC file for a custom layout.
+- Switch languages by holding Space or tapping the globe key. Import a KLC file for a custom layout.
 
 ### Editing and voice
 
@@ -34,15 +34,20 @@
 
 ### Appearance and feedback
 
-- Dark and light keyboards, an optional red Enter key, Roboto and Geist, and Ndot font import.
+- Dark, Light and NP2(a)SE themes. Choose a theme-based, red, yellow or purple accent for Enter and Backspace.
+- Roboto and Geist, Ndot import from ZIP, TTF or OTF, and rounded alternate-character menus that match the keyboard theme.
 - Adjust key height, spacing, corner radius and keyboard position. Try your changes from the app.
 - Optional vibration and a keyboard glow that reacts to your voice during dictation.
+
+**Glyph Sync** is an experimental feature for Nothing Phone (3). The [local build guide](docs/BUILD.md) explains how to enable it in a debug build with Nothing’s Glyph Matrix SDK.
 
 ## Install
 
 1. Download and install the [signed APK](https://github.com/CVRSPOTTED/nothing-type/releases/tag/v0.7.0). The minimum OS version is Android 8.0.
 2. Open Nothing Type. On **Enable**, turn on the keyboard in Android settings, then select it as your input method.
 3. Use **Settings** for languages and typing, and **Style** for appearance. Tap **Try typing** to test your changes.
+
+[Setup guide and FAQ](docs/SETUP.md)
 
 ## Build locally
 
@@ -60,6 +65,6 @@ On Windows, run the same tasks with `gradlew.bat`. See the [build guide](docs/BU
 | `swipe-research/` | Experimental swipe decoder |
 | `docs/` | Build, testing and release guides |
 
-[Report an issue](https://github.com/CVRSPOTTED/nothing-type/issues) · [Changelog](CHANGELOG.md) · [Third-party licenses](THIRD_PARTY.md)
+[Report an issue](https://github.com/CVRSPOTTED/nothing-type/issues) · [Changelog](CHANGELOG.md) · [Roadmap](docs/ROADMAP.md) · [Third-party licenses](THIRD_PARTY.md)
 
 The app code uses the [MIT license](LICENSE). The bundled word lists use [CC BY-SA 4.0](app/src/main/assets/dictionaries/SOURCE.md).

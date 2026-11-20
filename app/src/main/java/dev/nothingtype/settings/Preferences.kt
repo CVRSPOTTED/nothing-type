@@ -9,9 +9,35 @@ import dev.nothingtype.keyboard.WordText
 import org.json.JSONArray
 import org.json.JSONObject
 
-enum class Palette(val canvas: Int, val key: Int, val ink: Int, val accent: Int) {
-    DARK(Color.BLACK, Color.rgb(32, 32, 32), Color.rgb(242, 242, 242), Color.WHITE),
-    LIGHT(Color.rgb(235, 235, 232), Color.WHITE, Color.rgb(22, 22, 22), Color.rgb(30, 30, 30))
+enum class Palette(
+    val canvas: Int,
+    val key: Int,
+    val ink: Int,
+    val accent: Int,
+    val accentInk: Int,
+    val functionKey: Int,
+    val shiftAccent: Int? = null,
+    val voiceAccent: Int = accent
+) {
+    DARK(Color.BLACK, 0xFF202020.toInt(), 0xFFF2F2F2.toInt(), Color.WHITE, Color.BLACK, 0xFF484848.toInt()),
+    LIGHT(0xFFEBEBE8.toInt(), Color.WHITE, 0xFF161616.toInt(), 0xFF1E1E1E.toInt(), Color.WHITE, 0xFFD0D0CE.toInt()),
+    DESSAU(
+        canvas = 0xFF30312F.toInt(),
+        key = 0xFF424F59.toInt(),
+        ink = 0xFFF2F2F2.toInt(),
+        accent = 0xFFFFCC26.toInt(),
+        accentInk = 0xFF161616.toInt(),
+        functionKey = 0xFF202426.toInt(),
+        shiftAccent = 0xFF245BC5.toInt(),
+        voiceAccent = 0xFFFF544A.toInt()
+    )
+}
+
+enum class KeyboardAccent(val color: Int?, val ink: Int = Color.WHITE) {
+    RED(0xFFD72D28.toInt()),
+    THEME(null),
+    YELLOW(0xFFFFCC26.toInt(), Color.BLACK),
+    PURPLE(0xFF7044B8.toInt())
 }
 
 enum class LanguageSwitch { SPACE_HOLD, BUTTON }
@@ -30,15 +56,25 @@ class Preferences(context: Context) {
         }
 
     var palette: Palette
-        get() = if (data.getString("palette", null) == "LIGHT") Palette.LIGHT else Palette.DARK
+        get() {
+            val saved = data.getString("palette", null)
+            return Palette.entries.firstOrNull { it.name == saved } ?: Palette.DARK
+        }
         set(value) {
             // Preserve the former SIGNAL accent when the user changes the base palette.
-            data.edit().putBoolean("red_enter", redEnter).putString("palette", value.name).apply()
+            data.edit().putString("keyboard_accent", keyboardAccent.name)
+                .putString("palette", value.name).apply()
         }
 
-    var redEnter: Boolean
-        get() = data.getBoolean("red_enter", data.getString("palette", null) == "SIGNAL")
-        set(value) { data.edit().putBoolean("red_enter", value).apply() }
+    var keyboardAccent: KeyboardAccent
+        get() {
+            val saved = data.getString("keyboard_accent", null)
+            if (saved != null) return KeyboardAccent.entries.firstOrNull { it.name == saved } ?: KeyboardAccent.THEME
+            return if (data.getBoolean("red_enter", data.getString("palette", null) == "SIGNAL")) {
+                KeyboardAccent.RED
+            } else KeyboardAccent.THEME
+        }
+        set(value) { data.edit().putString("keyboard_accent", value.name).apply() }
 
     var keyboardFont: KeyboardFont
         get() = KeyboardFont.entries.firstOrNull { it.name == data.getString("font_family", null) }
@@ -123,6 +159,36 @@ class Preferences(context: Context) {
     var compactRussian: Boolean
         get() = data.getBoolean("compact_russian", true)
         set(value) { data.edit().putBoolean("compact_russian", value).apply() }
+    internal var glyphMode: GlyphMode
+        get() {
+            val saved = data.getString("glyph_mode", null)
+            return when (saved) {
+                "ANIMATION", "PULSE", "SCANNER" -> GlyphMode.ANIMATION
+                else -> GlyphMode.SYMBOLS
+            }
+        }
+        set(value) {
+            data.edit().putString("glyph_mode", value.name).putString("glyph_animation", glyphAnimation.name).apply()
+        }
+
+    internal var glyphAnimation: GlyphEffect
+        get() {
+            val saved = data.getString("glyph_animation", null) ?: data.getString("glyph_mode", null)
+            return GlyphEffect.animations.firstOrNull { it.name == saved } ?: GlyphEffect.PULSE
+        }
+        set(value) {
+            require(value in GlyphEffect.animations)
+            data.edit().putString("glyph_animation", value.name).apply()
+        }
+
+    internal var glyphBrightness: Int
+        get() = number("glyph_brightness", GlyphBrightness.DEFAULT_PERCENT, GlyphBrightness.range)
+        set(value) = save("glyph_brightness", value, GlyphBrightness.range)
+
+    var glyphSync: Boolean
+        get() = data.getBoolean("glyph_sync", false)
+        set(value) { data.edit().putBoolean("glyph_sync", value).apply() }
+
     var haptics: Boolean
         get() = data.getBoolean("haptics", true)
         set(value) { data.edit().putBoolean("haptics", value).apply() }

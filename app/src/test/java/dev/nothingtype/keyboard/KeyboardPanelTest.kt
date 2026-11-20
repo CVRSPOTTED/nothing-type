@@ -11,6 +11,8 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import dev.nothingtype.R
+import dev.nothingtype.settings.KeyboardAccent
 import dev.nothingtype.settings.Palette
 import dev.nothingtype.settings.Preferences
 import dev.nothingtype.settings.LanguageSwitch
@@ -34,6 +36,8 @@ class KeyboardPanelTest {
         view is ViewGroup -> (0 until view.childCount).flatMap { buttons(view.getChildAt(it)) }
         else -> emptyList()
     }
+    private fun switchTo(language: Language) = activity.getString(R.string.switch_to_language, language.title)
+
     private fun tap(view: View, action: Int, x: Float = 1f) {
         val event = MotionEvent.obtain(0, 0, action, x, 1f, 0)
         try { view.dispatchTouchEvent(event) } finally { event.recycle() }
@@ -151,7 +155,7 @@ class KeyboardPanelTest {
     @Test fun spaceHoldChoosesLanguageWithoutInsertingAndTapStillInserts() {
         val panel = panel()
         measurePanel(panel)
-        assertFalse(buttons(panel).any { it.text == "EN" || it.text == "RU" })
+        assertFalse(buttons(panel).any { it.contentDescription == switchTo(Language.RU) })
         val space = buttons(panel).first { it.text == "space" }
         tap(space, MotionEvent.ACTION_DOWN)
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper())
@@ -184,7 +188,9 @@ class KeyboardPanelTest {
         assertEquals(LanguageSwitch.BUTTON, Preferences(activity).languageSwitch)
         val panel = panel()
         measurePanel(panel)
-        val language = buttons(panel).single { it.text == "EN" }
+        val language = buttons(panel).single { it.contentDescription == switchTo(Language.RU) } as InstantKey
+        assertTrue(language.text.isEmpty())
+        assertNotNull(language.toolbarIcon)
         val bottom = language.parent as ViewGroup
         assertEquals("space", (bottom.getChildAt(bottom.indexOfChild(language) + 1) as Button).text)
         tap(language, MotionEvent.ACTION_DOWN)
@@ -201,7 +207,7 @@ class KeyboardPanelTest {
         tap(space, MotionEvent.ACTION_UP)
         assertEquals(Language.RU, prefs.language)
         assertEquals(listOf(" "), typed)
-        buttons(panel).single { it.text == "RU" }.performClick()
+        buttons(panel).single { it.contentDescription == switchTo(Language.EN) }.performClick()
         assertEquals(Language.EN, prefs.language)
         assertEquals(listOf(Command.LANGUAGE, Command.LANGUAGE), commands)
     }
@@ -220,7 +226,7 @@ class KeyboardPanelTest {
         assertTrue(typed.isEmpty())
         prefs.languageSwitch = LanguageSwitch.SPACE_HOLD
         panel.render()
-        assertFalse(buttons(panel).any { it.text == "EN" || it.text == "RU" })
+        assertFalse(buttons(panel).any { it.contentDescription == switchTo(Language.RU) })
         assertTrue(buttons(panel).single { it.text == "space" }.isLongClickable)
         assertEquals(LanguageSwitch.SPACE_HOLD, Preferences(activity).languageSwitch)
     }
@@ -334,10 +340,29 @@ class KeyboardPanelTest {
             .idleFor(java.time.Duration.ofMillis(android.view.ViewConfiguration.getLongPressTimeout() + 100L))
         tap(period, MotionEvent.ACTION_UP)
         assertTrue(typed.isEmpty())
-        val menu = org.robolectric.shadows.ShadowPopupMenu.getLatestPopupMenu().menu
-        assertEquals("…", menu.getItem(0).title)
-        menu.performIdentifierAction(menu.getItem(0).itemId, 0)
+        val popup = org.robolectric.util.ReflectionHelpers.getField<android.widget.PopupWindow>(panel, "alternativesPopup")
+        assertTrue(popup.isShowing)
+        val options = buttons(popup.contentView)
+        assertEquals(listOf("…", "!", "?", "—", "/"), options.map { it.text.toString() })
+        options.first().performClick()
         assertEquals(listOf("…"), typed)
+        assertFalse(popup.isShowing)
+    }
+
+    @Test fun alternativesUseTheKeyboardPaletteAndRoundedSurface() {
+        val prefs = Preferences(activity)
+        for (palette in Palette.entries) {
+            prefs.palette = palette
+            val panel = panel()
+            measurePanel(panel)
+            buttons(panel).single { it.text == "," }.performLongClick()
+            val popup = org.robolectric.util.ReflectionHelpers.getField<android.widget.PopupWindow>(panel, "alternativesPopup")
+            val surface = popup.background as android.graphics.drawable.GradientDrawable
+            assertEquals(palette.canvas, surface.color?.defaultColor)
+            assertTrue(surface.cornerRadius >= activity.dp(16))
+            assertTrue(buttons(popup.contentView).all { it.currentTextColor == palette.ink })
+            popup.dismiss()
+        }
     }
 
     @Config(qualifiers = "en-sw720dp-land")
@@ -357,31 +382,53 @@ class KeyboardPanelTest {
             .edit().putString("palette", "SIGNAL").apply()
         val prefs = Preferences(activity)
         assertEquals(Palette.DARK, prefs.palette)
-        assertTrue(prefs.redEnter)
+        assertEquals(KeyboardAccent.RED, prefs.keyboardAccent)
 
         prefs.palette = Palette.LIGHT
-        assertTrue(prefs.redEnter)
+        assertEquals(KeyboardAccent.RED, prefs.keyboardAccent)
         val reopened = Preferences(activity)
         assertEquals(Palette.LIGHT, reopened.palette)
-        assertTrue(reopened.redEnter)
+        assertEquals(KeyboardAccent.RED, reopened.keyboardAccent)
     }
 
-    @Test fun redAccentChangesOnlyEnterInBothPalettes() {
+    @Test fun removedAccentFallsBackToThemeEvenWithAnOldRedSetting() {
+        activity.getSharedPreferences("keyboard", android.content.Context.MODE_PRIVATE).edit()
+            .putString("keyboard_accent", "BLUE").putBoolean("red_enter", true).apply()
+        assertEquals(KeyboardAccent.THEME, Preferences(activity).keyboardAccent)
+    }
+
+    @Test fun accentColorsEnterBackspaceAndActiveShiftInAllPalettes() {
         val prefs = Preferences(activity)
         fun fill(button: Button): Int? {
             return (button.background.current as android.graphics.drawable.GradientDrawable).color?.defaultColor
         }
         for (palette in Palette.entries) {
             prefs.palette = palette
-            prefs.redEnter = false
+            prefs.keyboardAccent = KeyboardAccent.THEME
             val keyboard = panel()
             fun key(text: String) = buttons(keyboard).single { it.text == text }
             val normalKey = fill(key("q"))
             assertEquals(palette.accent, fill(key("↵")))
-            prefs.redEnter = true
+            assertEquals(palette.accentInk, key("↵").currentTextColor)
+            assertEquals(palette.accent, fill(key("⌫")))
+            assertEquals(palette.accentInk, key("⌫").currentTextColor)
+            val themeShift = key("↑")
+            themeShift.performClick()
+            assertEquals(palette.shiftAccent ?: palette.functionKey, fill(themeShift))
+            themeShift.performClick()
+            prefs.keyboardAccent = KeyboardAccent.YELLOW
             keyboard.render()
-            assertEquals(0xFFD72D28.toInt(), fill(key("↵")))
+            assertEquals(KeyboardAccent.YELLOW.color, fill(key("↵")))
+            assertEquals(KeyboardAccent.YELLOW.color, fill(key("⌫")))
+            assertEquals(KeyboardAccent.YELLOW.ink, key("↵").currentTextColor)
+            assertEquals(KeyboardAccent.YELLOW.ink, key("⌫").currentTextColor)
             assertEquals(normalKey, fill(key("q")))
+            val shift = key("↑")
+            val idleShift = fill(shift)
+            shift.performClick()
+            assertEquals(KeyboardAccent.YELLOW.color, fill(shift))
+            shift.performClick()
+            assertEquals(idleShift, fill(shift))
         }
     }
 }

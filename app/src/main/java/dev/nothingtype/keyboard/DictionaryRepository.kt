@@ -6,7 +6,7 @@ import android.os.Looper
 import java.util.Locale
 import java.util.concurrent.Executors
 
-/** Keep recent lexicons ready without indexing eight languages at keyboard startup. */
+/** Keep recent lexicons ready without indexing all languages at keyboard startup. */
 internal object DictionaryRepository {
     val fallback = Suggestions()
     private val worker = Executors.newSingleThreadExecutor()

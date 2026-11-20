@@ -17,6 +17,20 @@ APK появится в `app/build/outputs/apk/debug/app-debug.apk`.
 В GitHub Actions его можно скачать в артефакте `nothing-type-debug`
 после успешного прогона. Для просмотра артефактов нужен вход в GitHub.
 
+## Glyph Sync на Nothing Phone (3)
+
+Для локальной проверки скачайте [Glyph Matrix SDK 2.0](https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit/blob/999b1143a6bff0dd79db11d21b92c15c56a346b1/glyph-matrix-sdk-2.0.aar) у Nothing и ознакомьтесь с [его лицензией](https://github.com/Nothing-Developer-Programme/GlyphMatrix-Developer-Kit/blob/999b1143a6bff0dd79db11d21b92c15c56a346b1/LICENSE.md). Укажите путь к AAR при сборке.
+
+```powershell
+.\gradlew.bat "-PglyphMatrixSdk=D:\sdk\glyph-matrix-sdk-2.0.aar" assembleDebug
+```
+
+После установки откройте вкладку Glyph, включите Glyph Sync и нажмите букву или цифру в поле «Проверить ввод». Режим «Буквы и цифры» выводит последний символ с «Искрами». Режим «Анимация» показывает «Импульс» или «Сканер» без текста. Кнопки под превью проигрывают выбранный эффект на экране. Ползунок яркости также регулирует заднюю матрицу при наборе. Интеграция доступна в локальной отладочной сборке для Phone (3). Обычная сборка и релиз собираются без SDK. Для автоматической проверки на подключённом Phone (3) соберите и установите также `assembleDebugAndroidTest`, затем запустите:
+
+```powershell
+adb shell am instrument -w -e glyph_sync_probe true dev.nothingtype.testing/dev.nothingtype.testing.EditorSmokeInstrumentation
+```
+
 ## Структура
 
 | Папка | Содержимое |

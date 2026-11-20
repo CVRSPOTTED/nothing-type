@@ -2,6 +2,8 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+val glyphMatrixSdk = providers.gradleProperty("glyphMatrixSdk").orNull
+
 android {
     namespace = "dev.nothingtype"
     compileSdk = 36
@@ -10,8 +12,8 @@ android {
         applicationId = "dev.nothingtype.keyboard"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.7.0"
+        versionCode = 12
+        versionName = "0.8.0"
         testApplicationId = "dev.nothingtype.testing"
         testInstrumentationRunner = "dev.nothingtype.testing.EditorSmokeInstrumentation"
     }
@@ -25,6 +27,12 @@ android {
         all { it.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2") }
     }
     buildFeatures { buildConfig = true }
+    defaultConfig.buildConfigField("boolean", "GLYPH_SYNC", "false")
+    sourceSets.getByName("release").java.srcDir("src/noGlyphSync/java")
+    sourceSets.getByName("debug").apply {
+        java.srcDir(if (glyphMatrixSdk != null) "src/glyphSync/java" else "src/noGlyphSync/java")
+        if (glyphMatrixSdk != null) manifest.srcFile("src/glyphSync/AndroidManifest.xml")
+    }
     bundle { language { enableSplit = false } }
     lint { abortOnError = true }
     val ownerKeystore = providers.environmentVariable("NOTHING_TYPE_KEYSTORE").orNull
@@ -40,12 +48,20 @@ android {
         }
     }
     buildTypes {
+        getByName("debug") {
+            if (glyphMatrixSdk != null) buildConfigField("boolean", "GLYPH_SYNC", "true")
+        }
         getByName("release") {
             if (ownerKeystore != null) signingConfig = signingConfigs.getByName("owner")
         }
     }
 }
 dependencies {
+    if (glyphMatrixSdk != null) {
+        val sdk = file(glyphMatrixSdk)
+        require(sdk.isFile) { "Glyph Matrix SDK AAR not found: ${sdk.path}" }
+        add("debugImplementation", files(sdk))
+    }
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.14.1")
 }

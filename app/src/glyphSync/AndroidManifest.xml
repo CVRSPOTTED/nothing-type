@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- GlyphSync.isAvailable checks the SDK's minimum API before the SDK is used. -->
+    <uses-sdk tools:overrideLibrary="com.nothing.thirdparty" />
+    <uses-permission android:name="com.nothing.ketchum.permission.ENABLE" />
+    <queries>
+        <package android:name="com.nothing.thirdparty" />
+    </queries>
+    <application>
+        <meta-data android:name="NothingKey" android:value="test" />
+        <activity android:name="dev.nothingtype.testing.EditorFixtureActivity" android:exported="false" />
+    </application>
+</manifest>

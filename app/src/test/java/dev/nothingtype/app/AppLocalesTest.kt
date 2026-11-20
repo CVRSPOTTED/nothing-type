@@ -25,12 +25,13 @@ class AppLocalesTest {
         val dialog = ShadowAlertDialog.getLatestAlertDialog()
         assertNotNull(dialog)
         val list: ListView = dialog.listView
-        val french = (0 until list.count).first { list.getItemAtPosition(it).toString() == "Français" }
-        list.performItemClick(null, french, list.getItemIdAtPosition(french))
+        val italian = (0 until list.count).first { list.getItemAtPosition(it).toString() == "Italiano" }
+        list.performItemClick(null, italian, list.getItemIdAtPosition(italian))
 
         val reopened = Robolectric.buildActivity(MainActivity::class.java).setup().get()
-        assertEquals("Langue de l’application", reopened.getString(R.string.app_language))
-        assertEquals(Language.FR, AppLocales.selected(reopened))
+        assertEquals("Lingua dell’app", reopened.getString(R.string.app_language))
+        assertEquals("Voce", AppLocales.forKeyboard(reopened).getString(R.string.voice_idle))
+        assertEquals(Language.IT, AppLocales.selected(reopened))
         assertEquals(Language.RU, Preferences(reopened).language)
         assertFalse(AppLocales.shouldOfferOnLaunch(reopened))
     }

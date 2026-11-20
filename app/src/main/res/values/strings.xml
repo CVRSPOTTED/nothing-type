@@ -65,15 +65,33 @@
     <string name="more_symbols">More symbols</string>
     <string name="common_symbols">Common symbols</string>
     <string name="language_switch_hold">Hold Space and choose a layout</string>
-    <string name="language_switch_button">Button to the left of Space</string>
+    <string name="language_switch_button">Globe to the left of Space</string>
     <string name="switch_to_language">Switch layout to %1$s</string>
     <string name="space_button_help">Space. Slide to move the cursor.</string>
     <string name="local_suggestions">Offline word suggestions</string>
     <string name="autocorrect">T9 · Autocorrect</string>
     <string name="autocorrect_help">Corrects clear one-letter typos when you type a space or punctuation. Backspace restores your word. Disabled in sensitive fields, email addresses and URLs.</string>
-    <string name="suggestions_help">Type a word and choose a completion above the keys. Suggestions work offline in all eight built-in layouts.</string>
+    <string name="suggestions_help">Type a word and choose a completion above the keys. Suggestions work offline in all built-in layouts.</string>
     <string name="feedback_heading">Vibration and voice input</string>
     <string name="feedback_detail">Follows the system vibration setting.</string>
+    <string name="glyph_sync" translatable="false">Glyph Sync</string>
+    <string name="tab_glyph" translatable="false">Glyph</string>
+    <string name="glyph_sync_help">Glyph Sync pauses in private fields.</string>
+    <string name="glyph_mode">Matrix mode</string>
+    <string name="glyph_mode_symbols">Letters and digits</string>
+    <string name="glyph_mode_pulse">Pulse</string>
+    <string name="glyph_mode_scanner">Scanner</string>
+    <string name="glyph_mode_sparks">Sparks</string>
+    <string name="glyph_mode_animation">Animation</string>
+    <string name="glyph_brightness">Glyph brightness</string>
+    <string name="glyph_symbols_help">The latest letter or digit appears with sparks.</string>
+    <string name="glyph_animation_help">The selected effect plays as you type without showing characters.</string>
+    <string name="glyph_previous_animation">Previous effect</string>
+    <string name="glyph_next_animation">Next effect</string>
+    <string name="glyph_preview_tap">One tap</string>
+    <string name="glyph_preview_burst">Fast typing</string>
+    <string name="glyph_pulse_help">A ring expands from the center.</string>
+    <string name="glyph_scanner_help">A vertical line scans across the matrix.</string>
     <string name="haptic_feedback">Haptic feedback</string>
     <string name="configure_microphone">Set up microphone access</string>
     <string name="voice_help">Tap Voice to use the system speech service, which may need internet access. Voice input is hidden in password fields.</string>
@@ -96,7 +114,7 @@
     <string name="tab_style">Style</string>
     <string name="keyboard_font">Keyboard font</string>
     <string name="import_ndot">Import Ndot font</string>
-    <string name="ndot_hint">Tap Ndot to import your ZIP, OTF or TTF. After import, select it and switch to English to see the dotted letters.</string>
+    <string name="ndot_hint">Choose a Ndot ZIP, OTF or TTF. Nothing Type selects the font after import.</string>
     <string name="ndot_import_error">Could not open the font. Choose an OTF, TTF or a ZIP with a font inside.</string>
     <string name="shift_active">Shift is on. Hold for Caps Lock.</string>
     <string name="caps_active">Caps Lock is on. Tap to turn it off.</string>
@@ -107,8 +125,12 @@
     <string name="test_keyboard_title">Keyboard test</string>
     <string name="test_keyboard_hint">Type here using the keyboard selected in Android</string>
     <string name="keyboard_themes">Keyboard themes</string>
-    <string name="red_enter">Red accent</string>
-    <string name="red_enter_help">Colors the Enter key red in both keyboard themes.</string>
+    <string name="keyboard_accent">Keyboard accent</string>
+    <string name="accent_theme">Theme default</string>
+    <string name="accent_red">Red</string>
+    <string name="accent_yellow">Yellow</string>
+    <string name="accent_purple">Purple</string>
+    <string name="keyboard_accent_help">Colors Enter, Backspace, active Shift and Caps Lock, and the voice indicator.</string>
     <string name="keyboard_palette_option">Keyboard theme %1$s</string>
     <string name="test_keyboard_enable_first">Enable and select Nothing Type in Android to try typing.</string>
     <string name="compact_russian">Wider Russian keys</string>
@@ -138,4 +160,8 @@
     <string name="language_system">System language</string>
     <string name="theme_dark">Dark</string>
     <string name="theme_light">Light</string>
+    <string name="theme_np2a_se" translatable="false">NP2(a)SE</string>
+    <string name="status_choose_keyboard">Enabled · select Nothing Type to start typing</string>
+    <string name="setup_enable_hint">Turn on Nothing Type in Android settings, then come back to select it.</string>
+    <string name="replace_ndot">Replace Ndot font</string>
 </resources>

@@ -11,6 +11,7 @@ enum class Language(val title: String, val tag: String, val space: String) {
     AR("العربية", "ar", "مسافة"),
     TR("Türkçe", "tr-TR", "boşluk"),
     ES("Español", "es-ES", "espacio"),
+    IT("Italiano", "it-IT", "spazio"),
     CUSTOM("", "und", "space");
 
     val locale: Locale get() = Locale.forLanguageTag(tag)
